@@ -8,11 +8,13 @@ export default function AllCompteurs() {
   const [showModal, setShowModal] = useState(false);
   const [editingCompteur, setEditingCompteur] = useState(null);
   const [error, setError] = useState('');
+  const [searchText, setSearchText] = useState('');
 
   const [form, setForm] = useState({
     codeImmeuble: '', nomPropriete: '', rg: '', typeBien: '',
     province: '', adresse: '', quartier: '', localisation: '',
-    sousCompteurs: [''] // tableau pour plusieurs numeroCompteur
+    loue: false,
+    sousCompteurs: ['']
   });
 
   async function load() {
@@ -40,6 +42,7 @@ export default function AllCompteurs() {
       adresse: compteur?.adresse || '',
       quartier: compteur?.quartier || '',
       localisation: compteur?.localisation || '',
+      loue: compteur?.loue || false,
       sousCompteurs: compteur?.sousCompteurs?.map(sc => sc.numeroCompteur) || ['']
     });
     setError('');
@@ -47,17 +50,12 @@ export default function AllCompteurs() {
   };
 
   const handleCloseModal = () => setShowModal(false);
-
-  const handleAddSousCompteur = () => {
-    setForm({ ...form, sousCompteurs: [...form.sousCompteurs, ''] });
-  };
-
+  const handleAddSousCompteur = () => setForm({ ...form, sousCompteurs: [...form.sousCompteurs, ''] });
   const handleChangeSousCompteur = (index, value) => {
     const scs = [...form.sousCompteurs];
     scs[index] = value;
     setForm({ ...form, sousCompteurs: scs });
   };
-
   const handleRemoveSousCompteur = (index) => {
     const scs = form.sousCompteurs.filter((_, i) => i !== index);
     setForm({ ...form, sousCompteurs: scs });
@@ -65,8 +63,8 @@ export default function AllCompteurs() {
 
   const handleSubmit = async () => {
     if (!form.codeImmeuble || !form.nomPropriete || !form.rg || !form.typeBien ||
-        !form.province || !form.adresse || !form.quartier ||
-        !form.localisation || form.sousCompteurs.some(sc => !sc)) {
+        !form.province || !form.adresse || !form.quartier || !form.localisation ||
+        form.sousCompteurs.some(sc => !sc)) {
       setError('Tous les champs et tous les numéros de compteur sont obligatoires.');
       return;
     }
@@ -99,20 +97,45 @@ export default function AllCompteurs() {
     }
   };
 
+  // Filtrage
+  const filteredCompteurs = compteurs.filter(c => {
+    const text = searchText.toLowerCase();
+    const mainFields = [
+      c.codeImmeuble, c.nomPropriete, c.rg, c.typeBien,
+      c.province, c.adresse, c.quartier, c.localisation
+    ];
+    const mainMatch = mainFields.some(f => f?.toLowerCase().includes(text));
+    const sousMatch = c.sousCompteurs?.some(s => s.numeroCompteur.toLowerCase().includes(text));
+    return mainMatch || sousMatch;
+  });
+
   return (
     <div>
       <h2>Tous les compteurs</h2>
+
+      {/* Barre de recherche */}
+      <div className="mb-3">
+        <input
+          type="text"
+          placeholder="Rechercher..."
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          className="form-control"
+        />
+      </div>
+
       <Button variant="primary" onClick={() => handleShowModal()}>Ajouter un compteur</Button>
 
       <table className="table mt-3">
         <thead>
           <tr>
-            <th>ID</th><th>Code Immeuble</th><th>Propriété</th><th>RG</th><th>Type Bien</th><th>Province</th>
-            <th>Adresse</th><th>Quartier</th><th>Localisation</th><th>Sous-Compteurs</th><th>Loué</th><th>Actions</th>
+            <th>ID</th><th>Code Immeuble</th><th>Propriété</th><th>RG</th><th>Type Bien</th>
+            <th>Province</th><th>Adresse</th><th>Quartier</th><th>Localisation</th>
+            <th>Sous-Compteurs</th><th>Loué</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {compteurs.map(c => (
+          {filteredCompteurs.map(c => (
             <tr key={c.id}>
               <td>{c.id}</td>
               <td>{c.codeImmeuble}</td>
@@ -171,6 +194,10 @@ export default function AllCompteurs() {
 
             <Form.Group><Form.Label>Localisation *</Form.Label>
               <Form.Control value={form.localisation} onChange={e => setForm({...form, localisation: e.target.value})} /></Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Check type="checkbox" label="Loué ?" checked={form.loue} onChange={e => setForm({...form, loue: e.target.checked})} />
+            </Form.Group>
 
             <Form.Label>Sous-Compteurs *</Form.Label>
             {form.sousCompteurs.map((sc, i) => (

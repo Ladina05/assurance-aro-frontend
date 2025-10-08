@@ -8,13 +8,12 @@ export default function NonLoues() {
   const [showModal, setShowModal] = useState(false);
   const [currentSousCompteur, setCurrentSousCompteur] = useState(null);
   const [form, setForm] = useState({ numeroFacture: '', montant: '' });
+  const [searchText, setSearchText] = useState('');
 
-  // Charger tous les compteurs non loués
   async function load() {
     setLoading(true);
     try {
       const data = await getCompteurs(false); // non loués
-      // Créer un tableau plat avec chaque sous-compteur
       const flatList = data.flatMap(c =>
         c.sousCompteurs.map(s => ({
           compteurId: c.id,
@@ -55,7 +54,6 @@ export default function NonLoues() {
       alert("Veuillez remplir au moins N° Facture ou Montant.");
       return;
     }
-
     try {
       await updateSousCompteur(currentSousCompteur.id, {
         numeroFacture: form.numeroFacture || null,
@@ -85,9 +83,31 @@ export default function NonLoues() {
     }
   };
 
+  // Filtrage
+  const filteredCompteurs = compteurs.filter(s => {
+    const text = searchText.toLowerCase();
+    const mainFields = [
+      s.codeImmeuble, s.nomPropriete, s.rg, s.typeBien,
+      s.province, s.adresse, s.quartier, s.localisation, s.numeroCompteur
+    ];
+    return mainFields.some(f => f?.toLowerCase().includes(text));
+  });
+
   return (
     <div>
       <h2>Compteurs non loués</h2>
+
+      {/* Barre de recherche */}
+      <div className="mb-3">
+        <input
+          type="text"
+          placeholder="Rechercher..."
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          className="form-control"
+        />
+      </div>
+
       <Table striped bordered hover>
         <thead>
           <tr>
@@ -107,7 +127,7 @@ export default function NonLoues() {
           </tr>
         </thead>
         <tbody>
-          {compteurs.map(s => (
+          {filteredCompteurs.map(s => (
             <tr key={s.id}>
               <td>{s.compteurId}</td>
               <td>{s.codeImmeuble}</td>
@@ -122,11 +142,7 @@ export default function NonLoues() {
               <td>{s.numeroFacture || '-'}</td>
               <td>{s.montant || '-'}</td>
               <td>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleShowModal(s)}
-                >
+                <Button variant="primary" size="sm" onClick={() => handleShowModal(s)}>
                   Ajouter Facture / Montant
                 </Button>
               </td>
