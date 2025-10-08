@@ -1,0 +1,44 @@
+/* style basique pour la demo */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f7f7f7;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+nav a {
+  margin-right: 12px;
+  text-decoration: none;
+  color: #333;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-primary { background: #1976d2; color: white; }
+.btn-danger { background: #d32f2f; color: white; }
+.btn-outline { background: transparent; border: 1px solid #1976d2; color: #1976d2; }
+.summary-row { font-weight: bold; background: #fafafa; }
