@@ -1,37 +1,171 @@
-import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
-import Home from './pages/Home';
-import AllCompteurs from './pages/AllCompteurs';
-import Loues from './pages/Loues';
-import NonLoues from './pages/NonLoues';
-import Historique from './pages/Historique';
-import BatchDetails from './pages/BatchDetails';
+"use client"
+
+import { useContext } from "react"
+import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom"
+import { AuthContext } from "./context/AuthContext"
+import Home from "./pages/Home"
+import AllCompteurs from "./pages/AllCompteurs"
+import Loues from "./pages/Loues"
+import NonLoues from "./pages/NonLoues"
+import Historique from "./pages/Historique"
+import BatchDetails from "./pages/BatchDetails"
+import Login from "./pages/Login"
+import Register from "./pages/Register"
+import Profile from "./pages/Profile"
+import { HouseFill, Grid3x3GapFill, HouseSlashFill, ClockHistory, PersonCircle } from "react-bootstrap-icons"
+import "./App.css"
+
+function PrivateRoute({ children }) {
+  const { user, loading } = useContext(AuthContext)
+
+  if (loading)
+    return (
+      <div className="loading-screen">
+        <div className="spinner-border text-success" />
+        <p>Chargement...</p>
+      </div>
+    )
+
+  return user ? children : <Navigate to="/login" />
+}
 
 export default function App() {
+  const { user, loading } = useContext(AuthContext)
+  const location = useLocation()
+
+  if (loading)
+    return (
+      <div className="loading-screen">
+        <div className="spinner-border text-success" />
+        <p>Chargement...</p>
+      </div>
+    )
+
+  const navItems = [
+    { path: "/", label: "Accueil", icon: <HouseFill size={20} /> },
+    { path: "/all-compteurs", label: "Tous", icon: <Grid3x3GapFill size={20} /> },
+    { path: "/loues", label: "Loués", icon: <HouseFill size={20} /> },
+    { path: "/non-loues", label: "Libres", icon: <HouseSlashFill size={20} /> },
+    { path: "/historique", label: "Historique", icon: <ClockHistory size={20} /> },
+  ]
+
   return (
-    <div className="container mt-4">
-      <h1 className="mb-3">Assurance Aro — Gestion des Compteurs</h1>
+    <div className="app-wrapper">
+      {user && (
+        <>
+          <header className="app-header">
+            <div className="header-container">
+              <div className="header-brand">
+                <div className="brand-logo">
+                  <Grid3x3GapFill size={28} />
+                </div>
+                <div className="brand-text">
+                  <h1 className="brand-title">Assurance ARO</h1>
+                  <p className="brand-subtitle">Gestion des compteurs</p>
+                </div>
+              </div>
 
-      {/* --- Navigation --- */}
-      <nav className="mb-3">
-        <Link className="me-3" to="/">Accueil</Link>
-        <Link className="me-3" to="/all-compteurs">Tous les compteurs</Link>
-        <Link className="me-3" to="/loues">Loués</Link>
-        <Link className="me-3" to="/non-loues">Non loués</Link>
-        <Link className="me-3" to="/historique">Historique</Link>
-      </nav>
+              <nav className="header-nav">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`nav-link ${location.pathname === item.path ? "active" : ""}`}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
 
-      <hr />
+              <Link to="/profile" className="header-profile">
+                <PersonCircle size={32} />
+              </Link>
+            </div>
+          </header>
 
-      {/* --- Routes --- */}
-      <Routes>
-        <Route path="/" element={<Home />} />                 {/* Page d’accueil */}
-        <Route path="/all-compteurs" element={<AllCompteurs />} />
-        <Route path="/loues" element={<Loues />} />
-        <Route path="/non-loues" element={<NonLoues />} />
-        <Route path="/historique" element={<Historique />} />
-        <Route path="/historique/:id" element={<BatchDetails />} />
-      </Routes>
+          <nav className="mobile-nav">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`mobile-nav-link ${location.pathname === item.path ? "active" : ""}`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
+            ))}
+            <Link to="/profile" className={`mobile-nav-link ${location.pathname === "/profile" ? "active" : ""}`}>
+              <PersonCircle size={20} />
+              <span>Profil</span>
+            </Link>
+          </nav>
+        </>
+      )}
+
+      <main className={user ? "app-main" : "app-main-full"}>
+        <Routes>
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+          <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
+
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <Home />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/all-compteurs"
+            element={
+              <PrivateRoute>
+                <AllCompteurs />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/loues"
+            element={
+              <PrivateRoute>
+                <Loues />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/non-loues"
+            element={
+              <PrivateRoute>
+                <NonLoues />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/historique"
+            element={
+              <PrivateRoute>
+                <Historique />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/historique/:id"
+            element={
+              <PrivateRoute>
+                <BatchDetails />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </main>
     </div>
-  );
+  )
 }
