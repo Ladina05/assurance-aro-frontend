@@ -51,12 +51,12 @@ export default function Login() {
         <div className="auth-card">
           <div className="auth-header">
             <div className="auth-logo">
-              <div className="logo-circle">
-                <BoxArrowInRight size={32} />
+              <div className="logo-circl">
+                <img src="/public/Aro.jpeg" alt="Aro" width={100} height={100} />
               </div>
             </div>
             <h2 className="auth-title">Bienvenue</h2>
-            <p className="auth-subtitle">Connectez-vous à votre compte Assurance ARO</p>
+            <p className="auth-subtitle">Connectez-vous à votre compte ARO IMMO</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">

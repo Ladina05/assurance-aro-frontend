@@ -82,8 +82,8 @@ export default function Register() {
         <div className="auth-card">
           <div className="auth-header">
             <div className="auth-logo">
-              <div className="logo-circle">
-                <PersonPlusFill size={32} />
+              <div className="logo-circl">
+                <img src="/public/Aro.jpeg" alt="Aro" width={100} height={100} />
               </div>
             </div>
             <h2 className="auth-title">Créer un compte</h2>

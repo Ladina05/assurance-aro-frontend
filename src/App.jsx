@@ -56,11 +56,11 @@ export default function App() {
           <header className="app-header">
             <div className="header-container">
               <div className="header-brand">
-                <div className="brand-logo">
-                  <Grid3x3GapFill size={28} />
+                <div className="brand-log">
+                  <img src="/public/Aro.jpeg" alt="Logo Aro" width={80} height={80} />
                 </div>
                 <div className="brand-text">
-                  <h1 className="brand-title">Assurance ARO</h1>
+                  <h1 className="brand-title">ARO IMMO</h1>
                   <p className="brand-subtitle">Gestion des compteurs</p>
                 </div>
               </div>

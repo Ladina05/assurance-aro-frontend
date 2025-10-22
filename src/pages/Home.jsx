@@ -41,7 +41,7 @@ export default function Home() {
   return (
     <div className="home-container">
       <div className="home-hero">
-        <h1 className="home-title">Bienvenue sur Assurance ARO</h1>
+        <h1 className="home-title">Bienvenue sur ARO IMMO</h1>
         <p className="home-subtitle">Gérez efficacement vos compteurs et suivez vos paiements en toute simplicité</p>
       </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { getCompteurs, createCompteur, updateCompteur, deleteCompteur } from "../services/api"
 import { Modal, Button, Form, Alert } from "react-bootstrap"
-import { PlusCircleFill, PencilSquare, TrashFill, Search, Grid3x3GapFill, XCircleFill } from "react-bootstrap-icons"
+import { PlusCircleFill, PencilSquare, TrashFill, Search, Grid3x3GapFill, XCircleFill, Filter } from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
@@ -19,6 +19,21 @@ export default function AllCompteurs() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [compteurToDelete, setCompteurToDelete] = useState(null)
   const { toasts, addToast, removeToast } = useToast()
+  const [showFilters, setShowFilters] = useState(false)
+
+  // États pour les filtres individuels
+  const [filters, setFilters] = useState({
+    codeImmeuble: "",
+    province: "",
+    quartier: "",
+    nomPropriete: "",
+    rg: "",
+    typeBien: "",
+    adresse: "",
+    localisation: "",
+    numeroCompteur: "",
+    loue: ""
+  })
 
   const [form, setForm] = useState({
     codeImmeuble: "",
@@ -29,10 +44,9 @@ export default function AllCompteurs() {
     adresse: "",
     quartier: "",
     localisation: "",
-    typeCompteur: "",
     loue: false,
-    sousCompteurs: [""],
-  })
+    sousCompteurs: [{ numeroCompteur: "", typeCompteur: "eau" }],
+  });
 
   async function load() {
     setLoading(true)
@@ -51,37 +65,77 @@ export default function AllCompteurs() {
   }, [])
 
   const handleShowModal = (compteur = null) => {
-    setEditingCompteur(compteur)
-    setForm({
-      codeImmeuble: compteur?.codeImmeuble || "",
-      nomPropriete: compteur?.nomPropriete || "",
-      rg: compteur?.rg || "",
-      typeBien: compteur?.typeBien || "",
-      province: compteur?.province || "",
-      adresse: compteur?.adresse || "",
-      quartier: compteur?.quartier || "",
-      localisation: compteur?.localisation || "",
-      typeCompteur: compteur?.typeCompteur || "",
-      loue: compteur?.loue || false,
-      sousCompteurs: compteur?.sousCompteurs?.map((sc) => sc.numeroCompteur) || [""],
-    })
-    setError("")
-    setShowModal(true)
-  }
+    setEditingCompteur(compteur);
 
-  const handleCloseModal = () => setShowModal(false)
-  const handleAddSousCompteur = () => setForm({ ...form, sousCompteurs: [...form.sousCompteurs, ""] })
-  const handleChangeSousCompteur = (index, value) => {
-    const scs = [...form.sousCompteurs]
-    scs[index] = value
-    setForm({ ...form, sousCompteurs: scs })
-  }
+    if (compteur) {
+      // Mode modification
+      setForm({
+        codeImmeuble: compteur.codeImmeuble || "",
+        nomPropriete: compteur.nomPropriete || "",
+        rg: compteur.rg || "",
+        typeBien: compteur.typeBien || "",
+        province: compteur.province || "",
+        adresse: compteur.adresse || "",
+        quartier: compteur.quartier || "",
+        localisation: compteur.localisation || "",
+        loue: compteur.loue || false,
+        sousCompteurs:
+          compteur.sousCompteurs?.map((sc) => ({
+            numeroCompteur: sc.numeroCompteur || "",
+            typeCompteur: sc.typeCompteur || "eau",
+          })) || [{ numeroCompteur: "", typeCompteur: "eau" }],
+      });
+    } else {
+      // Mode ajout
+      setForm({
+        codeImmeuble: "",
+        nomPropriete: "",
+        rg: "",
+        typeBien: "",
+        province: "",
+        adresse: "",
+        quartier: "",
+        localisation: "",
+        loue: false,
+        sousCompteurs: [{ numeroCompteur: "", typeCompteur: "eau" }],
+      });
+    }
+
+    setError("");
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => setShowModal(false);
+
+  const handleAddSousCompteur = () => {
+    setForm({
+      ...form,
+      sousCompteurs: [
+        ...form.sousCompteurs,
+        { numeroCompteur: "", typeCompteur: "eau" },
+      ],
+    });
+  };
+
+  const handleChangeSousCompteur = (index, key, value) => {
+    const scs = [...form.sousCompteurs];
+
+    // Empêche l'erreur "Cannot create property on string"
+    if (typeof scs[index] !== "object" || scs[index] === null) {
+      scs[index] = { numeroCompteur: "", typeCompteur: "eau" };
+    }
+
+    scs[index][key] = value;
+    setForm({ ...form, sousCompteurs: scs });
+  };
+
   const handleRemoveSousCompteur = (index) => {
-    const scs = form.sousCompteurs.filter((_, i) => i !== index)
-    setForm({ ...form, sousCompteurs: scs })
-  }
+    const scs = form.sousCompteurs.filter((_, i) => i !== index);
+    setForm({ ...form, sousCompteurs: scs });
+  };
 
   const handleSubmit = async () => {
+    // Vérification des champs principaux
     if (
       !form.codeImmeuble ||
       !form.nomPropriete ||
@@ -91,54 +145,83 @@ export default function AllCompteurs() {
       !form.adresse ||
       !form.quartier ||
       !form.localisation ||
-      !form.typeCompteur ||
-      form.sousCompteurs.some((sc) => !sc)
+      form.sousCompteurs.some(
+        (sc) => !sc.numeroCompteur || !sc.typeCompteur
+      )
     ) {
-      setError("Tous les champs et tous les numéros de compteur sont obligatoires.")
-      return
+      setError("Tous les champs et tous les numéros de compteur sont obligatoires.");
+      return;
     }
 
     try {
       const payload = {
         ...form,
-        sousCompteurs: form.sousCompteurs.map((numeroCompteur) => ({ numeroCompteur })),
-      }
+        sousCompteurs: form.sousCompteurs.map((sc) => ({
+          numeroCompteur: sc.numeroCompteur,
+          typeCompteur: sc.typeCompteur,
+        })),
+      };
 
       if (editingCompteur) {
-        await updateCompteur(editingCompteur.id, payload)
-        addToast("Compteur modifié avec succès", "success")
+        await updateCompteur(editingCompteur.id, payload);
+        addToast("Compteur modifié avec succès", "success");
       } else {
-        await createCompteur(payload)
-        addToast("Compteur ajouté avec succès", "success")
+        await createCompteur(payload);
+        addToast("Compteur ajouté avec succès", "success");
       }
-      load()
-      handleCloseModal()
+
+      load();
+      handleCloseModal();
     } catch (err) {
-      addToast(err.message, "error")
+      addToast(err.message, "error");
     }
-  }
+  };
 
   const handleDeleteClick = (c) => {
-    setCompteurToDelete(c)
-    setShowDeleteConfirm(true)
-  }
+    setCompteurToDelete(c);
+    setShowDeleteConfirm(true);
+  };
 
   const handleDeleteConfirm = async () => {
     try {
-      await deleteCompteur(compteurToDelete.id)
-      addToast("Compteur supprimé avec succès", "success")
-      load()
+      await deleteCompteur(compteurToDelete.id);
+      addToast("Compteur supprimé avec succès", "success");
+      load();
     } catch (err) {
-      addToast(err.message, "error")
+      addToast(err.message, "error");
     } finally {
-      setShowDeleteConfirm(false)
-      setCompteurToDelete(null)
+      setShowDeleteConfirm(false);
+      setCompteurToDelete(null);
     }
+  };
+
+  // Gestion des filtres individuels
+  const handleFilterChange = (filterName, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterName]: value
+    }))
   }
 
-  // Filtrage
+  const clearAllFilters = () => {
+    setFilters({
+      codeImmeuble: "",
+      province: "",
+      quartier: "",
+      nomPropriete: "",
+      rg: "",
+      typeBien: "",
+      adresse: "",
+      localisation: "",
+      numeroCompteur: "",
+      loue: ""
+    })
+  }
+
+  // Filtrage combiné (recherche globale + filtres individuels)
   const filteredCompteurs = compteurs
     .filter((c) => {
+      // Filtre de recherche globale (existant)
       const text = searchText.toLowerCase()
       const mainFields = [
         c.codeImmeuble,
@@ -153,12 +236,32 @@ export default function AllCompteurs() {
       ]
       const mainMatch = mainFields.some((f) => f?.toLowerCase().includes(text))
       const sousMatch = c.sousCompteurs?.some((s) => s.numeroCompteur.toLowerCase().includes(text))
-      return mainMatch || sousMatch
+      const globalSearchMatch = searchText === "" || mainMatch || sousMatch
+
+      // Filtres individuels
+      const individualFiltersMatch = 
+        (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
+        (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
+        (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
+        (filters.nomPropriete === "" || c.nomPropriete?.toLowerCase().includes(filters.nomPropriete.toLowerCase())) &&
+        (filters.rg === "" || c.rg?.toLowerCase().includes(filters.rg.toLowerCase())) &&
+        (filters.typeBien === "" || c.typeBien?.toLowerCase().includes(filters.typeBien.toLowerCase())) &&
+        (filters.adresse === "" || c.adresse?.toLowerCase().includes(filters.adresse.toLowerCase())) &&
+        (filters.localisation === "" || c.localisation?.toLowerCase().includes(filters.localisation.toLowerCase())) &&
+        (filters.numeroCompteur === "" || c.sousCompteurs?.some(s => s.numeroCompteur.toLowerCase().includes(filters.numeroCompteur.toLowerCase()))) &&
+        (filters.loue === "" || 
+          (filters.loue === "loue" && c.loue) || 
+          (filters.loue === "libre" && !c.loue))
+
+      return globalSearchMatch && individualFiltersMatch
     })
     .sort((a, b) => {
       // Tri alphabétique du quartier, insensible à la casse
       return a.quartier.localeCompare(b.quartier, undefined, { sensitivity: 'base' })
     })
+
+  // Vérifier s'il y a des filtres actifs
+  const hasActiveFilters = Object.values(filters).some(filter => filter !== "")
 
   return (
     <>
@@ -191,6 +294,7 @@ export default function AllCompteurs() {
           </Button>
         </div>
 
+        {/* Recherche globale existante */}
         <div className="search-bar">
           <Search size={20} className="search-icon" />
           <input
@@ -206,6 +310,151 @@ export default function AllCompteurs() {
             </button>
           )}
         </div>
+
+        {/* Bouton pour afficher/masquer les filtres avancés */}
+        <div className="filters-header">
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => setShowFilters(!showFilters)}
+            className="filter-toggle-btn"
+          >
+            <Filter size={16} />
+            Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter(f => f !== "").length})`}
+          </Button>
+          
+          {hasActiveFilters && (
+            <Button 
+              variant="outline-danger" 
+              size="sm" 
+              onClick={clearAllFilters}
+              className="clear-filters-btn"
+            >
+              <XCircleFill size={14} />
+              Effacer tous les filtres
+            </Button>
+          )}
+        </div>
+
+        {/* Filtres avancés par colonne */}
+        {showFilters && (
+          <div className="advanced-filters animate-fadeInUp">
+            <div className="filters-grid">
+              <div className="filter-group">
+                <label className="filter-label">Code Immeuble</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par code..."
+                  value={filters.codeImmeuble}
+                  onChange={(e) => handleFilterChange('codeImmeuble', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Province</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par province..."
+                  value={filters.province}
+                  onChange={(e) => handleFilterChange('province', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Quartier</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par quartier..."
+                  value={filters.quartier}
+                  onChange={(e) => handleFilterChange('quartier', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Propriété</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par propriété..."
+                  value={filters.nomPropriete}
+                  onChange={(e) => handleFilterChange('nomPropriete', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">RG</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par RG..."
+                  value={filters.rg}
+                  onChange={(e) => handleFilterChange('rg', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Type Bien</label>
+                <select
+                  value={filters.typeBien}
+                  onChange={(e) => handleFilterChange('typeBien', e.target.value)}
+                  className="filter-input"
+                >
+                  <option value="">Tous les types</option>
+                  <option value="placement">Placement</option>
+                  <option value="exploitation">Exploitation</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Adresse</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par adresse..."
+                  value={filters.adresse}
+                  onChange={(e) => handleFilterChange('adresse', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Localisation</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par localisation..."
+                  value={filters.localisation}
+                  onChange={(e) => handleFilterChange('localisation', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">N° Compteur</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par compteur..."
+                  value={filters.numeroCompteur}
+                  onChange={(e) => handleFilterChange('numeroCompteur', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Statut</label>
+                <select
+                  value={filters.loue}
+                  onChange={(e) => handleFilterChange('loue', e.target.value)}
+                  className="filter-input"
+                >
+                  <option value="">Tous</option>
+                  <option value="loue">Occupé</option>
+                  <option value="libre">Libre</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="loading-state">
@@ -225,8 +474,7 @@ export default function AllCompteurs() {
                   <th>Type Bien</th>
                   <th>Adresse</th>
                   <th>Localisation</th>
-                  <th>Type Compteur</th>
-                  <th>Sous-Compteurs</th>
+                  <th>Compteurs</th>
                   <th>Loué</th>
                   <th>Actions</th>
                 </tr>
@@ -234,10 +482,22 @@ export default function AllCompteurs() {
               <tbody>
                 {filteredCompteurs.length === 0 ? (
                   <tr>
-                    <td colSpan="12" className="text-center py-5">
+                    <td colSpan="11" className="text-center py-5">
                       <div className="empty-state">
                         <Grid3x3GapFill size={48} className="text-muted mb-3" />
                         <p className="text-muted">Aucun compteur trouvé</p>
+                        {(searchText || hasActiveFilters) && (
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm" 
+                            onClick={() => {
+                              setSearchText("")
+                              clearAllFilters()
+                            }}
+                          >
+                            Réinitialiser les filtres
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -257,19 +517,19 @@ export default function AllCompteurs() {
                       <td>{c.adresse}</td>
                       <td>{c.localisation}</td>
                       <td>
-                        <span className={`badge-type ${c.typeCompteur}`}>{c.typeCompteur}</span>
-                      </td>
-                      <td>
                         <div className="compteurs-list">
                           {c.sousCompteurs?.map((sc) => (
-                            <span key={sc.id} className="compteur-badge">
-                              {sc.numeroCompteur}
-                            </span>
+                            <div key={sc.id} className="d-flex align-items-center mb-1">
+                              <span className="compteur-badge me-2">{sc.numeroCompteur}</span>
+                              <span className={`badge-type ${sc.typeCompteur}`}>{sc.typeCompteur}</span>
+                            </div>
                           ))}
                         </div>
                       </td>
                       <td>
-                        <span className={`badge-status ${c.loue ? "loue" : "libre"}`}>{c.loue ? "occupé" : "libre"}</span>
+                        <span className={`badge-status ${c.loue ? "loue" : "libre"}`}>
+                          {c.loue ? "occupé" : "libre"}
+                        </span>
                       </td>
                       <td>
                         <div className="action-buttons">
@@ -376,37 +636,35 @@ export default function AllCompteurs() {
                     />
                   </Form.Group>
                 </div>
-                <div className="col-md-6">
-                  <Form.Group className="mb-3">
-                    <Form.Label>Type du Compteur *</Form.Label>
-                    <Form.Select value={form.typeCompteur} onChange={(e) => setForm({ ...form, typeCompteur: e.target.value })}>
-                      <option value="">-- Sélectionner --</option>
-                      <option value="eau">eau</option>
-                      <option value="électricité">électricité</option>
-                    </Form.Select>
-                  </Form.Group>
-                </div>
               </div>
 
               <Form.Label>N° Compteur *</Form.Label>
-              {form.sousCompteurs.map((sc, i) => (
-                <div key={i} className="d-flex mb-2 gap-2">
-                  <Form.Control
-                    value={sc}
-                    onChange={(e) => handleChangeSousCompteur(i, e.target.value)}
-                    placeholder={`Compteur ${i + 1}`}
-                  />
-                  {form.sousCompteurs.length > 1 && (
-                    <Button variant="danger" size="sm" onClick={() => handleRemoveSousCompteur(i)}>
-                      <TrashFill size={16} />
+                {form.sousCompteurs.map((sc, index) => (
+                  <div key={index} className="d-flex gap-2 mb-2">
+                    <Form.Control
+                      type="text"
+                      placeholder="Numéro du compteur"
+                      value={sc.numeroCompteur}
+                      onChange={(e) => handleChangeSousCompteur(index, "numeroCompteur", e.target.value)}
+                    />
+                    <Form.Select
+                      value={sc.typeCompteur}
+                      onChange={(e) => handleChangeSousCompteur(index, "typeCompteur", e.target.value)}
+                    >
+                      <option value="eau">Eau</option>
+                      <option value="électricité">Électricité</option>
+                    </Form.Select>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleRemoveSousCompteur(index)}
+                    >
+                      <XCircleFill />
                     </Button>
-                  )}
-                </div>
-              ))}
-              <Button variant="outline-secondary" size="sm" onClick={handleAddSousCompteur} className="mt-2">
-                <PlusCircleFill size={16} className="me-1" />
-                Ajouter un N° Compteur
-              </Button>
+                  </div>
+                ))}
+                <Button variant="secondary" onClick={handleAddSousCompteur}>
+                  Ajouter un sous-compteur
+                </Button>
               <br /> <br />  
               <Form.Group className="mb-3">
                 <Form.Check
@@ -429,7 +687,7 @@ export default function AllCompteurs() {
         </Modal>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .page-container {
           padding: 32px 24px;
           max-width: 1600px;
@@ -482,7 +740,7 @@ export default function AllCompteurs() {
 
         .search-bar {
           position: relative;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
         }
 
         .search-icon {
@@ -526,6 +784,69 @@ export default function AllCompteurs() {
 
         .search-clear:hover {
           color: #ef4444;
+        }
+
+        .filters-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+        }
+
+        .filter-toggle-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .clear-filters-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .advanced-filters {
+          background: white;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 24px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e5e7eb;
+        }
+
+        .filters-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .filter-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #374151;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .filter-input {
+          padding: 10px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: all 0.2s;
+        }
+
+        .filter-input:focus {
+          outline: none;
+          border-color: #16a34a;
+          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
         .loading-state {
@@ -662,6 +983,15 @@ export default function AllCompteurs() {
 
           .table-wrapper {
             border-radius: 8px;
+          }
+
+          .filters-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .filters-header {
+            flex-direction: column;
+            align-items: flex-start;
           }
         }
       `}</style>
