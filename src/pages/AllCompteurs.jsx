@@ -3,11 +3,23 @@
 import { useEffect, useState } from "react"
 import { getCompteurs, createCompteur, updateCompteur, deleteCompteur } from "../services/api"
 import { Modal, Button, Form, Alert } from "react-bootstrap"
-import { PlusCircleFill, PencilSquare, TrashFill, Search, Grid3x3GapFill, XCircleFill, Filter } from "react-bootstrap-icons"
+import { 
+  PlusCircleFill, 
+  PencilSquare, 
+  TrashFill, 
+  Search, 
+  Grid3x3GapFill, 
+  XCircleFill, 
+  Filter,
+  FileEarmarkPdfFill  // Ajoutez cette ligne
+} from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import "../styles/animations.css"
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
 export default function AllCompteurs() {
   const [compteurs, setCompteurs] = useState([])
@@ -263,6 +275,163 @@ export default function AllCompteurs() {
   // Vérifier s'il y a des filtres actifs
   const hasActiveFilters = Object.values(filters).some(filter => filter !== "")
 
+  // Fonction pour générer le PDF manuellement (sans autoTable)
+  const downloadPDF = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'landscape', // Mode paysage pour plus de largeur
+        unit: 'mm',
+        format: 'a4'
+      })
+      
+      // Titre
+      doc.setFontSize(16)
+      doc.text('LISTE DES COMPTEURS', 148.5, 15, { align: 'center' })
+      doc.setFontSize(10)
+      doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} - ${filteredCompteurs.length} compteurs`, 148.5, 22, { align: 'center' })
+      
+      // En-têtes du tableau avec largeurs ajustées
+      const headers = ['Code', 'Province', 'Quartier', 'Propriété', 'RG', 'Type', 'Adresse', 'Localisation', 'Statut']
+      const columnWidths = [30, 30, 30, 30, 30, 30, 35, 30, 30]
+      let yPosition = 35
+      
+      // Dessiner les en-têtes (sans couleur de fond, juste en gras)
+      doc.setTextColor(0, 0, 0) // Noir
+      doc.setFont(undefined, 'bold')
+      doc.setFontSize(9)
+      
+      let xPosition = 10
+      headers.forEach((header, index) => {
+        // Dessiner uniquement la bordure, pas de fond coloré
+        doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
+        
+        // Centrer le texte dans la cellule
+        const textWidth = doc.getTextWidth(header)
+        const textX = xPosition + (columnWidths[index] - textWidth) / 2
+        doc.text(header, textX, yPosition - 2)
+        xPosition += columnWidths[index]
+      })
+      
+      // Données du tableau
+      doc.setFont(undefined, 'normal')
+      doc.setFontSize(8) // Taille de police plus petite
+      
+      filteredCompteurs.forEach((compteur, rowIndex) => {
+        yPosition += 8
+        
+        // Vérifier si on besoin d'une nouvelle page
+        if (yPosition > 190) { // A4 paysage hauteur = 210mm
+          doc.addPage()
+          yPosition = 35
+          
+          // Redessiner les en-têtes sur la nouvelle page
+          doc.setTextColor(0, 0, 0)
+          doc.setFont(undefined, 'bold')
+          doc.setFontSize(9)
+          
+          xPosition = 10
+          headers.forEach((header, index) => {
+            doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
+            const textWidth = doc.getTextWidth(header)
+            const textX = xPosition + (columnWidths[index] - textWidth) / 2
+            doc.text(header, textX, yPosition - 2)
+            xPosition += columnWidths[index]
+          })
+          
+          doc.setFont(undefined, 'normal')
+          doc.setFontSize(8)
+          yPosition += 8
+        }
+        
+        xPosition = 10
+        
+        const rowData = [
+          compteur.codeImmeuble || '-',
+          compteur.province || '-',
+          compteur.quartier || '-',
+          compteur.nomPropriete || '-',
+          compteur.rg || '-',
+          compteur.typeBien || '-',
+          compteur.adresse || '-',
+          compteur.localisation || '-',
+          compteur.loue ? 'Occupé' : 'Libre'
+        ]
+        
+        // Dessiner les bordures et le texte - TOUS CENTRÉS
+        rowData.forEach((data, colIndex) => {
+          // Tronquer le texte si trop long
+          let displayText = data
+          if (data.length > 20) {
+            displayText = data.substring(0, 17) + '...'
+          }
+          
+          doc.rect(xPosition, yPosition - 8, columnWidths[colIndex], 8, 'S')
+          
+          // TOUS LES TEXTES CENTRÉS
+          const textWidth = doc.getTextWidth(displayText)
+          const textX = xPosition + (columnWidths[colIndex] - textWidth) / 2
+          doc.text(displayText, textX, yPosition - 2)
+          
+          xPosition += columnWidths[colIndex]
+        })
+      })
+      
+      doc.save(`compteurs_${new Date().toISOString().split('T')[0]}.pdf`)
+      addToast("PDF téléchargé avec succès", "success")
+    } catch (error) {
+      console.error('Erreur génération PDF:', error)
+      addToast("Erreur lors de la génération du PDF", "error")
+    }
+  }
+  
+  const downloadExcel = () => {
+    const data = filteredCompteurs.map(c => ({
+      'Code Immeuble': c.codeImmeuble || '',
+      'Province': c.province || '',
+      'Quartier': c.quartier || '',
+      'Propriété': c.nomPropriete || '',
+      'RG': c.rg || '',
+      'Type Bien': c.typeBien || '',
+      'Adresse': c.adresse || '',
+      'Localisation': c.localisation || '',
+      'Statut': c.loue ? 'Occupé' : 'Libre',
+      'Compteurs': c.sousCompteurs?.map(sc => `${sc.numeroCompteur} (${sc.typeCompteur})`).join(', ') || ''
+    }))
+    
+    const ws = XLSX.utils.json_to_sheet(data)
+    
+    // Mettre les en-têtes en gras
+    if (ws['!ref']) {
+      const range = XLSX.utils.decode_range(ws['!ref'])
+      
+      // Parcourir toutes les cellules de la première ligne (en-têtes)
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col })
+        
+        if (ws[cellAddress]) {
+          // Appliquer le style gras
+          ws[cellAddress].s = {
+            font: {
+              bold: true
+            },
+            alignment: {
+              horizontal: 'center',
+              vertical: 'center'
+            }
+          }
+        }
+      }
+      
+      // Ajouter des bordures aux en-têtes
+      ws['!cols'] = Array(range.e.c + 1).fill(null).map(() => ({ width: 15 }))
+    }
+    
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Compteurs')
+    XLSX.writeFile(wb, `compteurs_${new Date().toISOString().split('T')[0]}.xlsx`)
+    addToast("Fichier Excel téléchargé avec succès", "success")
+  }
+
   return (
     <>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -288,10 +457,21 @@ export default function AllCompteurs() {
               <p className="page-subtitle">Gérez l'ensemble de vos compteurs</p>
             </div>
           </div>
-          <Button variant="primary" onClick={() => handleShowModal()} className="btn-add">
-            <PlusCircleFill size={20} />
-            Ajouter un compteur
-          </Button>
+          <div className="header-actions">
+            <Button variant="primary" onClick={() => handleShowModal()} className="btn-add">
+              <PlusCircleFill size={20} />
+              Ajouter un compteur
+            </Button>
+                        <br/><br />
+            <Button variant="outline-success" onClick={downloadExcel} className="me-2">
+              <FileEarmarkPdfFill size={16} className="me-1" />
+              Excel
+            </Button>
+            <Button variant="outline-danger" onClick={downloadPDF}>
+              <FileEarmarkPdfFill size={16} className="me-1" />
+              PDF
+            </Button>
+          </div>
         </div>
 
         {/* Recherche globale existante */}
@@ -463,7 +643,7 @@ export default function AllCompteurs() {
           </div>
         ) : (
           <div className="table-wrapper">
-            <table className="table">
+            <table className="table table-striped-custom">
               <thead>
                 <tr>
                   <th>Code Immeuble</th>
@@ -864,7 +1044,6 @@ export default function AllCompteurs() {
         }
 
         .table-wrapper {
-          background: white;
           border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -874,6 +1053,7 @@ export default function AllCompteurs() {
         .table {
           margin: 0;
           min-width: 1200px;
+          text-align: center;
         }
 
         .empty-state {
@@ -992,6 +1172,12 @@ export default function AllCompteurs() {
           .filters-header {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
           }
         }
       `}</style>

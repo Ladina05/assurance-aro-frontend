@@ -859,6 +859,7 @@ export default function NonLoues() {
         .table {
           margin: 0;
           min-width: 1400px;
+          text-align: center;
         }
 
         .empty-state {

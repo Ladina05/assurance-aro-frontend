@@ -869,6 +869,10 @@ export default function BatchDetails() {
           margin-bottom: 4px;
         }
 
+        .table{
+        text-align: center;
+        }
+
         .info-card-value {
           font-size: 18px;
           font-weight: 700;

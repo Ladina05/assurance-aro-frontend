@@ -551,6 +551,7 @@ export default function Loues() {
         .table {
           margin: 0;
           min-width: 1000px;
+          text-align: center;
         }
 
         .empty-state {
