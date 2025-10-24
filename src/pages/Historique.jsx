@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getBatches, getBatchDetails } from "../services/api"
+import { getBatches, getBatchDetails, downloadBatchPdf, deleteBatch } from "../services/api"
 import { Link } from "react-router-dom"
 import { ClockHistory, EyeFill, TrashFill, FileEarmarkPdfFill, Search, XCircleFill, Filter } from "react-bootstrap-icons"
 import { Button } from "react-bootstrap"
@@ -9,22 +9,6 @@ import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import "../styles/animations.css"
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api"
-
-async function downloadBatchPdf(batchId) {
-  const res = await fetch(`${API_BASE}/payment-batches/${batchId}/pdf`)
-  if (!res.ok) throw new Error("Erreur génération PDF")
-  const blob = await res.blob()
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `paiement_batch_${batchId}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  window.URL.revokeObjectURL(url)
-}
 
 const formatMontantFR = (montant) => {
   if (montant == null) return "-"
@@ -106,10 +90,7 @@ export default function Historique() {
 
   const handleDeleteConfirm = async () => {
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${batchToDelete.id}`, {
-        method: "DELETE",
-      })
-      if (!res.ok) throw new Error("Erreur suppression")
+      await deleteBatch(batchToDelete.id)
       setBatches((prev) => prev.filter((batch) => batch.id !== batchToDelete.id))
       setBatchesWithDetails((prev) => prev.filter((batch) => batch.id !== batchToDelete.id))
       addToast("Historique supprimé avec succès", "success")
@@ -123,7 +104,15 @@ export default function Historique() {
 
   const handleDownloadPdf = async (batchId) => {
     try {
-      await downloadBatchPdf(batchId)
+      const blob = await downloadBatchPdf(batchId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `paiement_batch_${batchId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
       addToast("PDF téléchargé avec succès", "success")
     } catch (err) {
       addToast(err.message, "error")

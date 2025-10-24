@@ -1,23 +1,34 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { getProfile } from '../services/api';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // 🔹 Pour savoir si on a récupéré l'utilisateur
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🔹 Au démarrage, on récupère le user et le token
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false); // 🔹 On a fini de charger l'état
+    checkAuth();
   }, []);
 
-  const login = (userData, token) => {
+  const checkAuth = async () => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (token && storedUser) {
+      try {
+        // Vérifier que le token est toujours valide
+        const userData = await getProfile();
+        setUser(userData);
+      } catch (error) {
+        console.error('Token invalide ou expiré:', error);
+        logout();
+      }
+    }
+    setLoading(false);
+  };
+
+  const login = async (userData, token) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
@@ -27,10 +38,37 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    // Rediriger vers la page de login
+    window.location.href = '/login';
   };
 
+  const hasRole = (role) => {
+    return user && user.role === role;
+  };
+
+  const hasAnyRole = (roles) => {
+    return user && roles.includes(user.role);
+  };
+
+  // Vérifier les permissions
+  const canCreate = () => hasAnyRole(['ADMIN', 'INSERTEUR']);
+  const canEdit = () => hasAnyRole(['ADMIN', 'INSERTEUR']);
+  const canDelete = () => hasRole('ADMIN');
+  const canView = () => user !== null;
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      loading,
+      hasRole,
+      hasAnyRole,
+      canCreate,
+      canEdit,
+      canDelete,
+      canView
+    }}>
       {children}
     </AuthContext.Provider>
   );

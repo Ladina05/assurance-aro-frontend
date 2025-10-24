@@ -1,9 +1,20 @@
 "use client"
+
+import { createPortal } from "react-dom"
+import { useEffect, useState } from "react"
 import Toast from "./Toast"
 import "./Toast.css"
 
 export default function ToastContainer({ toasts, removeToast }) {
-  return (
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
+  return createPortal(
     <div className="toast-container">
       {toasts.map((toast) => (
         <Toast
@@ -14,6 +25,7 @@ export default function ToastContainer({ toasts, removeToast }) {
           duration={toast.duration}
         />
       ))}
-    </div>
+    </div>,
+    document.body,
   )
 }

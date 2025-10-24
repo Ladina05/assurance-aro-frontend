@@ -29,6 +29,12 @@ export default function Toast({ message, type = "success", onClose, duration = 3
       <button className="toast-close" onClick={onClose} aria-label="Fermer">
         <X size={18} />
       </button>
+      <div
+        className="toast-progress"
+        style={{
+          animation: `shrink ${duration}ms linear forwards`,
+        }}
+      />
     </div>
   )
 }

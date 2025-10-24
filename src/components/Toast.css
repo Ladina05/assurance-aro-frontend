@@ -7,6 +7,7 @@
   flex-direction: column;
   gap: 12px;
   max-width: 400px;
+  pointer-events: none;
 }
 
 .custom-toast {
@@ -20,6 +21,12 @@
   border-left: 4px solid;
   animation: slideIn 0.3s ease-out;
   min-width: 320px;
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Ajout de position relative pour positionner la barre de progression */
+  position: relative;
+  overflow: hidden;
 }
 
 @keyframes slideIn {
@@ -63,40 +70,115 @@
   color: #666;
   transition: color 0.2s;
   margin-left: 12px;
+  pointer-events: auto;
 }
 
 .toast-close:hover {
   color: #1a1a1a;
 }
 
+/* Styles pour la barre de progression animée */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 100%;
+  border-radius: 0 0 12px 12px;
+  transform-origin: left;
+}
+
+/* Animation qui réduit la largeur de la barre */
+@keyframes shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
 .toast-success {
   border-left-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
 }
 
 .toast-success .toast-icon {
   color: #10b981;
 }
 
+/* Couleur de la barre de progression pour success */
+.toast-success .toast-progress {
+  background-color: #10b981;
+}
+
 .toast-error {
   border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
 }
 
 .toast-error .toast-icon {
   color: #ef4444;
 }
 
+/* Couleur de la barre de progression pour error */
+.toast-error .toast-progress {
+  background-color: #ef4444;
+}
+
 .toast-info {
   border-left-color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
 }
 
 .toast-info .toast-icon {
   color: #3b82f6;
 }
 
+/* Couleur de la barre de progression pour info */
+.toast-info .toast-progress {
+  background-color: #3b82f6;
+}
+
 .toast-warning {
   border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
 }
 
 .toast-warning .toast-icon {
   color: #f59e0b;
+}
+
+/* Couleur de la barre de progression pour warning */
+.toast-warning .toast-progress {
+  background-color: #f59e0b;
+}
+
+.toast-exit {
+  animation: slideOut 0.3s ease-in forwards;
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .custom-toast {
+    min-width: auto;
+    width: 100%;
+  }
 }

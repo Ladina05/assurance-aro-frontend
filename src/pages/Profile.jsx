@@ -9,6 +9,7 @@ import ToastContainer from "../components/ToastContainer"
 import "./Profile.css"
 import "../styles/animations.css"
 import { Modal, Form } from "react-bootstrap"
+import { changePassword } from "../services/api"
 
 export default function Profile() {
   const { user, logout } = useContext(AuthContext)
@@ -20,32 +21,30 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPwd, setShowPwd] = useState(false)
   const [loadingPwd, setLoadingPwd] = useState(false)
+
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) {
-      return addToast("Les nouveaux mots de passe ne correspondent pas", "danger")
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return addToast("Veuillez remplir tous les champs", "error")
     }
+
+    if (newPassword !== confirmPassword) {
+      return addToast("Les nouveaux mots de passe ne correspondent pas", "error")
+    }
+
+    if (newPassword.length < 6) {
+      return addToast("Le mot de passe doit contenir au moins 6 caractères", "warning")
+    }
+
     setLoadingPwd(true)
     try {
-      const token = localStorage.getItem("token") // ou depuis ton contexte Auth
-      const res = await fetch("http://localhost:4000/api/auth/change-password", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ oldPassword, newPassword }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Erreur")
-
-      addToast(data.message, "success")
+      await changePassword(oldPassword, newPassword)
+      addToast("Mot de passe changé avec succès", "success")
       setShowChangePwd(false)
       setOldPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (err) {
-      addToast(err.message, "danger")
+      addToast(err.message, "error")
     } finally {
       setLoadingPwd(false)
     }
@@ -114,6 +113,16 @@ export default function Profile() {
               </div>
             </div>
 
+            <div className="profile-info-item">
+              <div className="profile-info-icon">
+                <ShieldCheck size={24} />
+              </div>
+              <div className="profile-info-content">
+                <label>Rôle</label>
+                <p className="text-capitalize">{user.role?.toLowerCase()}</p>
+              </div>
+            </div>
+
             <button className="btn btn-primary btn-lg w-100 mt-2" onClick={() => setShowChangePwd(true)}>
               <ShieldCheck size={20} /> Changer le mot de passe
             </button>
@@ -138,6 +147,7 @@ export default function Profile() {
                     type={showPwd ? "text" : "password"}
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
+                    placeholder="Entrez votre ancien mot de passe"
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
@@ -146,7 +156,11 @@ export default function Profile() {
                     type={showPwd ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Entrez votre nouveau mot de passe"
                   />
+                  <Form.Text className="text-muted">
+                    Le mot de passe doit contenir au moins 6 caractères.
+                  </Form.Text>
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label>Confirmer le nouveau mot de passe</Form.Label>
@@ -154,6 +168,7 @@ export default function Profile() {
                     type={showPwd ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirmez votre nouveau mot de passe"
                   />
                 </Form.Group>
                 <Form.Group className="mb-3">
@@ -171,7 +186,14 @@ export default function Profile() {
                 Annuler
               </button>
               <button className="btn btn-success" onClick={handleChangePassword} disabled={loadingPwd}>
-                {loadingPwd ? "En cours..." : "Valider"}
+                {loadingPwd ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Modification...
+                  </>
+                ) : (
+                  "Valider"
+                )}
               </button>
             </Modal.Footer>
           </Modal>

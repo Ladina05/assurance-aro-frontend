@@ -3,7 +3,16 @@
 import { useRef } from "react"
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { getBatchDetails } from "../services/api"
+import { 
+  getBatchDetails, 
+  downloadBatchPdf, 
+  downloadCheque, 
+  downloadRecu, 
+  uploadCheque, 
+  uploadRecu,
+  deleteCheque,
+  deleteRecu 
+} from "../services/api"
 import { ArrowLeft, FileEarmarkPdfFill, CalendarEvent, CashStack, Search, XCircleFill, Filter } from "react-bootstrap-icons"
 import { Button } from "react-bootstrap"
 import { useToast } from "../hooks/useToast"
@@ -33,8 +42,6 @@ export default function BatchDetails() {
     montant: ""
   })
 
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api"
-
   const formatMontantFR = (montant) => {
     if (montant == null) return "-"
     return montant.toLocaleString("fr-FR", {
@@ -59,15 +66,8 @@ export default function BatchDetails() {
     const file = e.target.files[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append("cheque", file)
-
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/cheque`, {
-        method: "POST",
-        body: formData,
-      })
-      if (!res.ok) throw new Error("Erreur upload chèque")
+      await uploadCheque(id, file)
       await fetchBatchDetails()
       addToast("Chèque ajouté avec succès", "success")
     } catch (err) {
@@ -79,15 +79,8 @@ export default function BatchDetails() {
     const file = e.target.files[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append("recu", file)
-
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/recu`, {
-        method: "POST",
-        body: formData,
-      })
-      if (!res.ok) throw new Error("Erreur upload reçu")
+      await uploadRecu(id, file)
       await fetchBatchDetails()
       addToast("Reçu ajouté avec succès", "success")
     } catch (err) {
@@ -97,17 +90,16 @@ export default function BatchDetails() {
 
   const handleDownloadCheque = async () => {
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/cheque`)
-      if (!res.ok) throw new Error("Chèque non disponible")
-      const blob = await res.blob()
+      const blob = await downloadCheque(id)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = batch.chequePdf
+      a.download = batch.chequePdf || `cheque_batch_${id}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
+      addToast("Chèque téléchargé avec succès", "success")
     } catch (err) {
       addToast(err.message, "error")
     }
@@ -115,17 +107,34 @@ export default function BatchDetails() {
 
   const handleDownloadRecu = async () => {
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/recu`)
-      if (!res.ok) throw new Error("Reçu non disponible")
-      const blob = await res.blob()
+      const blob = await downloadRecu(id)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = batch.recuPdf
+      a.download = batch.recuPdf || `recu_batch_${id}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
+      addToast("Reçu téléchargé avec succès", "success")
+    } catch (err) {
+      addToast(err.message, "error")
+    }
+  }
+
+  // CORRECTION : Renommer la fonction pour éviter le conflit
+  const handleDownloadBatchPdf = async () => {
+    try {
+      const blob = await downloadBatchPdf(id)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `paiement_batch_${id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      addToast("PDF téléchargé avec succès", "success")
     } catch (err) {
       addToast(err.message, "error")
     }
@@ -141,8 +150,7 @@ export default function BatchDetails() {
 
   const confirmDeleteCheque = async () => {
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/cheque`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Erreur suppression chèque")
+      await deleteCheque(id)
       await fetchBatchDetails()
       addToast("Chèque supprimé", "success")
       setShowDeleteModalcheque(false)
@@ -154,8 +162,7 @@ export default function BatchDetails() {
 
   const confirmDeleteRecu = async () => {
     try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/recu`, { method: "DELETE" })
-      if (!res.ok) throw new Error("Erreur suppression reçu")
+      await deleteRecu(id)
       await fetchBatchDetails()
       addToast("Reçu supprimé", "success")
       setShowDeleteModalrecu(false)
@@ -199,7 +206,7 @@ export default function BatchDetails() {
 
   const groupedPayments = Object.values(
     (batch.payments ?? []).reduce((acc, p) => {
-      const key = p.numeroFacture ?? `nofacture-${p.id}` // clé unique si pas de facture
+      const key = p.numeroFacture ?? `nofacture-${p.id}`
       if (!acc[key]) {
         acc[key] = {
           ...p,
@@ -219,7 +226,6 @@ export default function BatchDetails() {
   // Filtrage combiné (recherche globale + filtres individuels)
   const filteredPayments = groupedPayments
     .filter((p) => {
-      // Filtre de recherche globale
       const text = searchText.toLowerCase()
       const mainFields = [
         p.compteur?.codeImmeuble,
@@ -237,7 +243,6 @@ export default function BatchDetails() {
       const mainMatch = mainFields.some((f) => f?.toLowerCase().includes(text))
       const globalSearchMatch = searchText === "" || mainMatch
 
-      // Filtres individuels
       const individualFiltersMatch = 
         (filters.codeImmeuble === "" || p.compteur?.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
         (filters.province === "" || p.compteur?.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
@@ -254,25 +259,6 @@ export default function BatchDetails() {
       return globalSearchMatch && individualFiltersMatch
     })
 
-  async function downloadBatchPdf() {
-    try {
-      const res = await fetch(`${API_BASE}/payment-batches/${id}/pdf`)
-      if (!res.ok) throw new Error("Erreur lors de la génération du PDF")
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `paiement_batch_${id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-      addToast("PDF téléchargé avec succès", "success")
-    } catch (err) {
-      addToast(err.message, "error")
-    }
-  }
-
   useEffect(() => {
     async function load() {
       setLoading(true)
@@ -287,7 +273,6 @@ export default function BatchDetails() {
     load()
   }, [id])
 
-  // Vérifier s'il y a des filtres actifs
   const hasActiveFilters = Object.values(filters).some(filter => filter !== "")
 
   if (loading) {
@@ -364,7 +349,8 @@ export default function BatchDetails() {
 
           <div className="details-title-section">
             <h2 className="details-title">Détails du paiement #{batch.id}</h2>
-            <button onClick={downloadBatchPdf} className="btn btn-success">
+            {/* CORRECTION : Utiliser handleDownloadBatchPdf au lieu de downloadBatchPdf */}
+            <button onClick={handleDownloadBatchPdf} className="btn btn-success">
               <FileEarmarkPdfFill size={18} />
               Télécharger le reçu PDF
             </button>

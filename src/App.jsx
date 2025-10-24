@@ -3,6 +3,7 @@
 import { useContext } from "react"
 import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom"
 import { AuthContext } from "./context/AuthContext"
+import ProtectedRoute from "./components/ProtectedRoute"
 import Home from "./pages/Home"
 import AllCompteurs from "./pages/AllCompteurs"
 import Loues from "./pages/Loues"
@@ -15,31 +16,18 @@ import Profile from "./pages/Profile"
 import { HouseFill, Grid3x3GapFill, HouseSlashFill, ClockHistory, PersonCircle } from "react-bootstrap-icons"
 import "./App.css"
 
-function PrivateRoute({ children }) {
-  const { user, loading } = useContext(AuthContext)
-
-  if (loading)
-    return (
-      <div className="loading-screen">
-        <div className="spinner-border text-success" />
-        <p>Chargement...</p>
-      </div>
-    )
-
-  return user ? children : <Navigate to="/login" />
-}
-
 export default function App() {
   const { user, loading } = useContext(AuthContext)
   const location = useLocation()
 
-  if (loading)
+  if (loading) {
     return (
       <div className="loading-screen">
         <div className="spinner-border text-success" />
         <p>Chargement...</p>
       </div>
     )
+  }
 
   const navItems = [
     { path: "/", label: "Accueil", icon: <HouseFill size={20} /> },
@@ -56,8 +44,8 @@ export default function App() {
           <header className="app-header">
             <div className="header-container">
               <div className="header-brand">
-                <div className="brand-log">
-                  <img src="/public/Aro.jpeg" alt="Logo Aro" width={80} height={80} />
+                <div className="brand-logo">
+                  <img src="/Aro.jpeg" alt="Logo Aro" width={80} height={80} />
                 </div>
                 <div className="brand-text">
                   <h1 className="brand-title">ARO IMMO</h1>
@@ -105,65 +93,76 @@ export default function App() {
 
       <main className={user ? "app-main" : "app-main-full"}>
         <Routes>
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-          <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
+          {/* Routes publiques */}
+          <Route 
+            path="/login" 
+            element={!user ? <Login /> : <Navigate to="/" replace />} 
+          />
+          <Route 
+            path="/register" 
+            element={!user ? <Register /> : <Navigate to="/" replace />} 
+          />
 
+          {/* Routes protégées */}
           <Route
             path="/"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Home />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/all-compteurs"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <AllCompteurs />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/loues"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Loues />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/non-loues"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <NonLoues />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/historique"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Historique />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/historique/:id"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <BatchDetails />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/profile"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <Profile />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
+
+          {/* Route par défaut */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
