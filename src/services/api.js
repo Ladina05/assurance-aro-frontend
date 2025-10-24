@@ -251,3 +251,41 @@ export async function deleteBatch(batchId) {
     method: 'DELETE'
   });
 }
+
+// Mot de passe oublié
+export async function forgotPassword(email) {
+  const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Erreur lors de la demande de réinitialisation');
+  }
+
+  return response.json();
+}
+
+// Réinitialisation du mot de passe
+export async function resetPassword(token, newPassword) {
+  return authFetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword })
+  });
+}
+
+// Vérification du token
+export async function verifyResetToken(token) {
+  const response = await fetch(`${API_BASE}/auth/verify-reset-token/${token}`);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Token invalide');
+  }
+
+  return response.json();
+}

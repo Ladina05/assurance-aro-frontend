@@ -13,6 +13,8 @@ import BatchDetails from "./pages/BatchDetails"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Profile from "./pages/Profile"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 import { HouseFill, Grid3x3GapFill, HouseSlashFill, ClockHistory, PersonCircle } from "react-bootstrap-icons"
 import "./App.css"
 
@@ -102,6 +104,9 @@ export default function App() {
             path="/register" 
             element={!user ? <Register /> : <Navigate to="/" replace />} 
           />
+
+          <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to="/" replace />} />
+          <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" replace />} />
 
           {/* Routes protégées */}
           <Route

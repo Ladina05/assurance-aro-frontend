@@ -123,6 +123,11 @@ export default function Login() {
                 S'inscrire
               </Link>
             </p>
+              <p>
+                <Link to="/forgot-password" className="auth-link">
+                  🔐 Mot de passe oublié ?
+                </Link>
+              </p>
           </div>
         </div>
       </div>
