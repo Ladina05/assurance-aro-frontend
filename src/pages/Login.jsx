@@ -52,7 +52,7 @@ export default function Login() {
           <div className="auth-header">
             <div className="auth-logo">
               <div className="logo-circl">
-                <img src="/public/Aro.jpeg" alt="Aro" width={100} height={100} />
+                <img src="/public/Aro.jpeg" alt="Aro" width={200} height={150} />
               </div>
             </div>
             <h2 className="auth-title">Bienvenue</h2>
@@ -100,7 +100,7 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
+            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading} style={{ background: "#0d9488" }}>
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" />

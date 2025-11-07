@@ -83,7 +83,7 @@ export default function Register() {
           <div className="auth-header">
             <div className="auth-logo">
               <div className="logo-circl">
-                <img src="/public/Aro.jpeg" alt="Aro" width={100} height={100} />
+                <img src="/public/Aro.jpeg" alt="Aro" width={150} height={100} />
               </div>
             </div>
             <h2 className="auth-title">Créer un compte</h2>
@@ -169,7 +169,7 @@ export default function Register() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
+            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading} style={{ background: "#0d9488" }}>
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" />

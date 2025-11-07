@@ -522,7 +522,7 @@ export default function Loues() {
 
         .filter-input:focus {
           outline: none;
-          border-color: #16a34a;
+          border-color: #0d9488;
           box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
@@ -614,7 +614,7 @@ export default function Loues() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+          background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
           padding: 16px 24px;
           border-radius: 12px;
           color: white;

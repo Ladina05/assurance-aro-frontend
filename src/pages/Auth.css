@@ -41,7 +41,7 @@
   width: 80px;
   height: 80px;
   margin: 0 auto;
-  background: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+  background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -96,7 +96,7 @@
 }
 
 .password-toggle:hover {
-  color: #16a34a;
+  color: #0d9488;
 }
 
 .auth-footer {
@@ -112,7 +112,7 @@
 }
 
 .auth-link {
-  color: #16a34a;
+  color: #0d9488;
   font-weight: 600;
   text-decoration: none;
   display: inline-flex;
@@ -121,7 +121,7 @@
 }
 
 .auth-link:hover {
-  color: #15803d;
+  color: #0d9488;
   text-decoration: underline;
 }
 
@@ -146,7 +146,7 @@
   padding: 20px;
   border-radius: 10px;
   margin: 20px 0;
-  border-left: 4px solid #28a745;
+  border-left: 4px solid #0d9488;
 }
 
 .error-message {

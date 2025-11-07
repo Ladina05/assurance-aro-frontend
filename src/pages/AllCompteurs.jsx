@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { getCompteurs, createCompteur, updateCompteur, deleteCompteur } from "../services/api"
-import { Modal, Button, Form, Alert } from "react-bootstrap"
-import { 
-  PlusCircleFill, 
-  PencilSquare, 
-  TrashFill, 
-  Search, 
-  Grid3x3GapFill, 
-  XCircleFill, 
+import { Modal, Button, Form, Alert, OverlayTrigger, Tooltip } from "react-bootstrap"
+import {
+  PlusCircleFill,
+  PencilSquare,
+  TrashFill,
+  Search,
+  Grid3x3GapFill,
+  XCircleFill,
   Filter,
-  FileEarmarkPdfFill  // Ajoutez cette ligne
+  FileEarmarkPdfFill
 } from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
@@ -19,7 +19,7 @@ import ToastContainer from "../components/ToastContainer"
 import "../styles/animations.css"
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs';
 
 export default function AllCompteurs() {
   const [compteurs, setCompteurs] = useState([])
@@ -251,7 +251,7 @@ export default function AllCompteurs() {
       const globalSearchMatch = searchText === "" || mainMatch || sousMatch
 
       // Filtres individuels
-      const individualFiltersMatch = 
+      const individualFiltersMatch =
         (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
         (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
         (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
@@ -261,8 +261,8 @@ export default function AllCompteurs() {
         (filters.adresse === "" || c.adresse?.toLowerCase().includes(filters.adresse.toLowerCase())) &&
         (filters.localisation === "" || c.localisation?.toLowerCase().includes(filters.localisation.toLowerCase())) &&
         (filters.numeroCompteur === "" || c.sousCompteurs?.some(s => s.numeroCompteur.toLowerCase().includes(filters.numeroCompteur.toLowerCase()))) &&
-        (filters.loue === "" || 
-          (filters.loue === "loue" && c.loue) || 
+        (filters.loue === "" ||
+          (filters.loue === "loue" && c.loue) ||
           (filters.loue === "libre" && !c.loue))
 
       return globalSearchMatch && individualFiltersMatch
@@ -283,52 +283,52 @@ export default function AllCompteurs() {
         unit: 'mm',
         format: 'a4'
       })
-      
+
       // Titre
       doc.setFontSize(16)
       doc.text('LISTE DES COMPTEURS', 148.5, 15, { align: 'center' })
       doc.setFontSize(10)
       doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} - ${filteredCompteurs.length} compteurs`, 148.5, 22, { align: 'center' })
-      
+
       // En-têtes du tableau avec largeurs ajustées
       const headers = ['Code', 'Province', 'Quartier', 'Propriété', 'RG', 'Type', 'Adresse', 'Localisation', 'Statut']
       const columnWidths = [30, 30, 30, 30, 30, 30, 35, 30, 30]
       let yPosition = 35
-      
+
       // Dessiner les en-têtes (sans couleur de fond, juste en gras)
       doc.setTextColor(0, 0, 0) // Noir
       doc.setFont(undefined, 'bold')
       doc.setFontSize(9)
-      
+
       let xPosition = 10
       headers.forEach((header, index) => {
         // Dessiner uniquement la bordure, pas de fond coloré
         doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
-        
+
         // Centrer le texte dans la cellule
         const textWidth = doc.getTextWidth(header)
         const textX = xPosition + (columnWidths[index] - textWidth) / 2
         doc.text(header, textX, yPosition - 2)
         xPosition += columnWidths[index]
       })
-      
+
       // Données du tableau
       doc.setFont(undefined, 'normal')
       doc.setFontSize(8) // Taille de police plus petite
-      
+
       filteredCompteurs.forEach((compteur, rowIndex) => {
         yPosition += 8
-        
+
         // Vérifier si on besoin d'une nouvelle page
         if (yPosition > 190) { // A4 paysage hauteur = 210mm
           doc.addPage()
           yPosition = 35
-          
+
           // Redessiner les en-têtes sur la nouvelle page
           doc.setTextColor(0, 0, 0)
           doc.setFont(undefined, 'bold')
           doc.setFontSize(9)
-          
+
           xPosition = 10
           headers.forEach((header, index) => {
             doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
@@ -337,14 +337,14 @@ export default function AllCompteurs() {
             doc.text(header, textX, yPosition - 2)
             xPosition += columnWidths[index]
           })
-          
+
           doc.setFont(undefined, 'normal')
           doc.setFontSize(8)
           yPosition += 8
         }
-        
+
         xPosition = 10
-        
+
         const rowData = [
           compteur.codeImmeuble || '-',
           compteur.province || '-',
@@ -356,7 +356,7 @@ export default function AllCompteurs() {
           compteur.localisation || '-',
           compteur.loue ? 'Occupé' : 'Libre'
         ]
-        
+
         // Dessiner les bordures et le texte - TOUS CENTRÉS
         rowData.forEach((data, colIndex) => {
           // Tronquer le texte si trop long
@@ -364,18 +364,18 @@ export default function AllCompteurs() {
           if (data.length > 20) {
             displayText = data.substring(0, 17) + '...'
           }
-          
+
           doc.rect(xPosition, yPosition - 8, columnWidths[colIndex], 8, 'S')
-          
+
           // TOUS LES TEXTES CENTRÉS
           const textWidth = doc.getTextWidth(displayText)
           const textX = xPosition + (columnWidths[colIndex] - textWidth) / 2
           doc.text(displayText, textX, yPosition - 2)
-          
+
           xPosition += columnWidths[colIndex]
         })
       })
-      
+
       doc.save(`compteurs_${new Date().toISOString().split('T')[0]}.pdf`)
       addToast("PDF téléchargé avec succès", "success")
     } catch (error) {
@@ -383,54 +383,81 @@ export default function AllCompteurs() {
       addToast("Erreur lors de la génération du PDF", "error")
     }
   }
-  
-  const downloadExcel = () => {
+
+  const downloadExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Compteurs');
+
+    // Définir les en-têtes
+    worksheet.columns = [
+      { header: 'Code Immeuble', key: 'codeImmeuble', width: 15 },
+      { header: 'Province', key: 'province', width: 12 },
+      { header: 'Quartier', key: 'quartier', width: 15 },
+      { header: 'Propriété', key: 'nomPropriete', width: 15 },
+      { header: 'RG', key: 'rg', width: 10 },
+      { header: 'Type Bien', key: 'typeBien', width: 12 },
+      { header: 'Adresse', key: 'adresse', width: 20 },
+      { header: 'Localisation', key: 'localisation', width: 15 },
+      { header: 'Statut', key: 'statut', width: 10 },
+      { header: 'Compteurs', key: 'compteurs', width: 25 }
+    ];
+
+    // Ajouter les données
     const data = filteredCompteurs.map(c => ({
-      'Code Immeuble': c.codeImmeuble || '',
-      'Province': c.province || '',
-      'Quartier': c.quartier || '',
-      'Propriété': c.nomPropriete || '',
-      'RG': c.rg || '',
-      'Type Bien': c.typeBien || '',
-      'Adresse': c.adresse || '',
-      'Localisation': c.localisation || '',
-      'Statut': c.loue ? 'Occupé' : 'Libre',
-      'Compteurs': c.sousCompteurs?.map(sc => `${sc.numeroCompteur} (${sc.typeCompteur})`).join(', ') || ''
-    }))
-    
-    const ws = XLSX.utils.json_to_sheet(data)
-    
-    // Mettre les en-têtes en gras
-    if (ws['!ref']) {
-      const range = XLSX.utils.decode_range(ws['!ref'])
-      
-      // Parcourir toutes les cellules de la première ligne (en-têtes)
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col })
-        
-        if (ws[cellAddress]) {
-          // Appliquer le style gras
-          ws[cellAddress].s = {
-            font: {
-              bold: true
-            },
-            alignment: {
-              horizontal: 'center',
-              vertical: 'center'
-            }
-          }
-        }
-      }
-      
-      // Ajouter des bordures aux en-têtes
-      ws['!cols'] = Array(range.e.c + 1).fill(null).map(() => ({ width: 15 }))
-    }
-    
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Compteurs')
-    XLSX.writeFile(wb, `compteurs_${new Date().toISOString().split('T')[0]}.xlsx`)
-    addToast("Fichier Excel téléchargé avec succès", "success")
-  }
+      codeImmeuble: c.codeImmeuble || '',
+      province: c.province || '',
+      quartier: c.quartier || '',
+      nomPropriete: c.nomPropriete || '',
+      rg: c.rg || '',
+      typeBien: c.typeBien || '',
+      adresse: c.adresse || '',
+      localisation: c.localisation || '',
+      statut: c.loue ? 'Occupé' : 'Libre',
+      compteurs: c.sousCompteurs?.map(sc => `${sc.numeroCompteur} (${sc.typeCompteur})`).join(', ') || ''
+    }));
+
+    worksheet.addRows(data);
+
+    // Style des en-têtes - EN GRAS
+    worksheet.getRow(1).font = {
+      bold: true,
+      size: 12,
+      color: { argb: '000000' }
+    };
+
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'D3D3D3' }
+    };
+
+    worksheet.getRow(1).alignment = {
+      vertical: 'middle',
+      horizontal: 'center'
+    };
+
+    // Appliquer des bordures aux en-têtes
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Télécharger le fichier
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `compteurs_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    addToast("Fichier Excel téléchargé avec succès", "success");
+  };
 
   return (
     <>
@@ -462,15 +489,19 @@ export default function AllCompteurs() {
               <PlusCircleFill size={20} />
               Ajouter un compteur
             </Button>
-                        <br/><br />
-            <Button variant="outline-success" onClick={downloadExcel} className="me-2">
-              <FileEarmarkPdfFill size={16} className="me-1" />
-              Excel
-            </Button>
-            <Button variant="outline-danger" onClick={downloadPDF}>
-              <FileEarmarkPdfFill size={16} className="me-1" />
-              PDF
-            </Button>
+            <br /><br />
+            <OverlayTrigger placement="top" overlay={<Tooltip>Télécharger en excel</Tooltip>}>
+              <Button variant="outline-success" onClick={downloadExcel} className="me-2">
+                <FileEarmarkPdfFill size={16} className="me-1" />
+                Excel
+              </Button>
+            </OverlayTrigger>
+            <OverlayTrigger placement="top" overlay={<Tooltip>Télécharger en pdf</Tooltip>}>
+              <Button variant="outline-danger" onClick={downloadPDF}>
+                <FileEarmarkPdfFill size={16} className="me-1" />
+                PDF
+              </Button>
+            </OverlayTrigger>
           </div>
         </div>
 
@@ -493,19 +524,19 @@ export default function AllCompteurs() {
 
         {/* Bouton pour afficher/masquer les filtres avancés */}
         <div className="filters-header">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => setShowFilters(!showFilters)}
             className="filter-toggle-btn"
           >
             <Filter size={16} />
             Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter(f => f !== "").length})`}
           </Button>
-          
+
           {hasActiveFilters && (
-            <Button 
-              variant="outline-danger" 
-              size="sm" 
+            <Button
+              variant="outline-danger"
+              size="sm"
               onClick={clearAllFilters}
               className="clear-filters-btn"
             >
@@ -667,9 +698,9 @@ export default function AllCompteurs() {
                         <Grid3x3GapFill size={48} className="text-muted mb-3" />
                         <p className="text-muted">Aucun compteur trouvé</p>
                         {(searchText || hasActiveFilters) && (
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
                             onClick={() => {
                               setSearchText("")
                               clearAllFilters()
@@ -713,12 +744,16 @@ export default function AllCompteurs() {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <Button variant="warning" size="sm" onClick={() => handleShowModal(c)}>
-                            <PencilSquare size={16} />
-                          </Button>
-                          <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c)}>
-                            <TrashFill size={16} />
-                          </Button>
+                          <OverlayTrigger placement="top" overlay={<Tooltip>Modifier</Tooltip>}>
+                            <Button variant="warning" size="sm" onClick={() => handleShowModal(c)}>
+                              <PencilSquare size={16} />
+                            </Button>
+                          </OverlayTrigger>
+                          <OverlayTrigger placement="top" overlay={<Tooltip>Supprimer</Tooltip>}>
+                            <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c)}>
+                              <TrashFill size={16} />
+                            </Button>
+                          </OverlayTrigger>
                         </div>
                       </td>
                     </tr>
@@ -730,7 +765,7 @@ export default function AllCompteurs() {
         )}
 
         <Modal show={showModal} onHide={handleCloseModal} size="lg">
-          <Modal.Header closeButton>
+          <Modal.Header closeButton style={{ background: "#0d9488" }}>
             <Modal.Title>{editingCompteur ? "Modifier le compteur" : "Ajouter un compteur"}</Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -819,33 +854,33 @@ export default function AllCompteurs() {
               </div>
 
               <Form.Label>N° Compteur *</Form.Label>
-                {form.sousCompteurs.map((sc, index) => (
-                  <div key={index} className="d-flex gap-2 mb-2">
-                    <Form.Control
-                      type="text"
-                      placeholder="Numéro du compteur"
-                      value={sc.numeroCompteur}
-                      onChange={(e) => handleChangeSousCompteur(index, "numeroCompteur", e.target.value)}
-                    />
-                    <Form.Select
-                      value={sc.typeCompteur}
-                      onChange={(e) => handleChangeSousCompteur(index, "typeCompteur", e.target.value)}
-                    >
-                      <option value="eau">Eau</option>
-                      <option value="électricité">Électricité</option>
-                    </Form.Select>
-                    <Button
-                      variant="danger"
-                      onClick={() => handleRemoveSousCompteur(index)}
-                    >
-                      <XCircleFill />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="secondary" onClick={handleAddSousCompteur}>
-                  Ajouter un sous-compteur
-                </Button>
-              <br /> <br />  
+              {form.sousCompteurs.map((sc, index) => (
+                <div key={index} className="d-flex gap-2 mb-2">
+                  <Form.Control
+                    type="text"
+                    placeholder="Numéro du compteur"
+                    value={sc.numeroCompteur}
+                    onChange={(e) => handleChangeSousCompteur(index, "numeroCompteur", e.target.value)}
+                  />
+                  <Form.Select
+                    value={sc.typeCompteur}
+                    onChange={(e) => handleChangeSousCompteur(index, "typeCompteur", e.target.value)}
+                  >
+                    <option value="eau">Eau</option>
+                    <option value="électricité">Électricité</option>
+                  </Form.Select>
+                  <Button
+                    variant="danger"
+                    onClick={() => handleRemoveSousCompteur(index)}
+                  >
+                    <XCircleFill />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="secondary" onClick={handleAddSousCompteur}>
+                Ajouter un sous-compteur
+              </Button>
+              <br /> <br />
               <Form.Group className="mb-3">
                 <Form.Check
                   type="checkbox"
@@ -860,7 +895,7 @@ export default function AllCompteurs() {
             <Button variant="outline-secondary" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button variant="primary" onClick={handleSubmit}>
+            <Button variant="primary" onClick={handleSubmit} style={{ background: "#0d9488" }}>
               {editingCompteur ? "Modifier" : "Ajouter"}
             </Button>
           </Modal.Footer>
@@ -892,7 +927,7 @@ export default function AllCompteurs() {
         .page-icon {
           width: 56px;
           height: 56px;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
           border-radius: 14px;
           display: flex;
           align-items: center;
@@ -915,7 +950,8 @@ export default function AllCompteurs() {
         }
 
         .btn-add {
-          box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+          color: white;
+          background: #0d9488;
         }
 
         .search-bar {
@@ -943,7 +979,7 @@ export default function AllCompteurs() {
 
         .search-input:focus {
           outline: none;
-          border-color: #16a34a;
+          border-color: #0d9488;
           box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
@@ -1056,6 +1092,12 @@ export default function AllCompteurs() {
           text-align: center;
         }
 
+        th, td {
+          background-color: white;
+          padding: 8px;
+          border: 1px solid #ddd;
+        }
+
         .empty-state {
           padding: 40px;
         }
@@ -1132,6 +1174,24 @@ export default function AllCompteurs() {
         .action-buttons {
           display: flex;
           gap: 8px;
+        }
+
+        .custom-tooltip {
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          letter-spacing: 0.3px !important;
+          border-radius: 6px !important;
+        }
+
+        .custom-tooltip .tooltip-inner {
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+          border-radius: 6px !important;
+          padding: 8px 12px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        .custom-tooltip.bs-tooltip-top .tooltip-arrow::before {
+          border-top-color: #1f2937 !important;
         }
 
         @media (max-width: 768px) {

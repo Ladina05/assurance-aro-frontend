@@ -3,8 +3,16 @@
 import { useEffect, useState } from "react"
 import { getBatches, getBatchDetails, downloadBatchPdf, deleteBatch } from "../services/api"
 import { Link } from "react-router-dom"
-import { ClockHistory, EyeFill, TrashFill, FileEarmarkPdfFill, Search, XCircleFill, Filter } from "react-bootstrap-icons"
-import { Button } from "react-bootstrap"
+import {
+  ClockHistory,
+  EyeFill,
+  TrashFill,
+  FileEarmarkPdfFill,
+  Search,
+  XCircleFill,
+  Filter,
+} from "react-bootstrap-icons"
+import { Button, OverlayTrigger, Tooltip } from "react-bootstrap"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
@@ -13,10 +21,12 @@ import "../styles/animations.css"
 const formatMontantFR = (montant) => {
   if (montant == null) return "-"
   return (
-    montant.toLocaleString("fr-FR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) + " Ar"
+    montant
+      .toLocaleString("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+      .replace(/\u202F/g, "  ") + " Ar"
   )
 }
 
@@ -25,6 +35,7 @@ export default function Historique() {
   const [batchesWithDetails, setBatchesWithDetails] = useState([])
   const [loading, setLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false)
   const [batchToDelete, setBatchToDelete] = useState(null)
   const { toasts, addToast, removeToast } = useToast()
   const [searchText, setSearchText] = useState("")
@@ -32,6 +43,7 @@ export default function Historique() {
   const [filters, setFilters] = useState({
     id: "",
     date: "",
+    periodePaiement: "",
     total: "",
     chequePdf: "",
     recuPdf: "",
@@ -45,8 +57,13 @@ export default function Historique() {
     typeCompteur: "",
     numeroCompteur: "",
     numeroFacture: "",
-    montant: ""
+    montant: "",
   })
+
+  const nomsMois = [
+    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+  ]
 
   useEffect(() => {
     async function load() {
@@ -54,24 +71,23 @@ export default function Historique() {
       try {
         const data = await getBatches()
         setBatches(data)
-        
-        // Charger les détails de chaque batch pour la recherche
+
         const batchesDetails = await Promise.all(
           data.map(async (batch) => {
             try {
               const details = await getBatchDetails(batch.id)
               return {
                 ...batch,
-                payments: details.payments || []
+                payments: details.payments || [],
               }
             } catch (err) {
               console.error(`Erreur chargement détails batch ${batch.id}:`, err)
               return {
                 ...batch,
-                payments: []
+                payments: [],
               }
             }
-          })
+          }),
         )
         setBatchesWithDetails(batchesDetails)
       } catch (err) {
@@ -119,11 +135,33 @@ export default function Historique() {
     }
   }
 
-  // Gestion des filtres individuels
+  const formatPeriodePaiement = (batch) => {
+    if (!batch.moisPaiement || !batch.anneePaiement) {
+      return "Non spécifié";
+    }
+    
+    const nomsMois = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ];
+    
+    const nomMois = nomsMois[batch.moisPaiement - 1];
+    return `${nomMois} ${batch.anneePaiement}`;
+  }
+
+  const getPeriodePaiementText = (batch) => {
+    if (!batch.moisPaiement || !batch.anneePaiement) {
+      return "non spécifié";
+    }
+    
+    const nomMois = nomsMois[batch.moisPaiement - 1];
+    return `${nomMois} ${batch.anneePaiement}`;
+  }
+
   const handleFilterChange = (filterName, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      [filterName]: value
+      [filterName]: value,
     }))
   }
 
@@ -131,6 +169,7 @@ export default function Historique() {
     setFilters({
       id: "",
       date: "",
+      periodePaiement: "",
       total: "",
       chequePdf: "",
       recuPdf: "",
@@ -144,85 +183,90 @@ export default function Historique() {
       typeCompteur: "",
       numeroCompteur: "",
       numeroFacture: "",
-      montant: ""
+      montant: "",
     })
   }
 
-  // Filtrage combiné (recherche globale + filtres individuels)
   const filteredBatches = batchesWithDetails
     .filter((batch) => {
-      // Filtre de recherche globale
       const text = searchText.toLowerCase()
-      
-      // Champs du batch principal
+
       const batchFields = [
         batch.id?.toString(),
         new Date(batch.date).toLocaleDateString("fr-FR"),
         batch.total?.toString(),
         batch.chequePdf ? "oui" : "non",
-        batch.recuPdf ? "oui" : "non"
+        batch.recuPdf ? "oui" : "non",
+        getPeriodePaiementText(batch),
       ]
-      
-      // Champs des paiements
-      const paymentFields = batch.payments?.flatMap(p => [
-        p.compteur?.codeImmeuble,
-        p.compteur?.province,
-        p.compteur?.quartier,
-        p.compteur?.nomPropriete,
-        p.compteur?.rg,
-        p.compteur?.adresse,
-        p.compteur?.localisation,
-        p.typeCompteur,
-        p.numeroCompteur,
-        p.numeroFacture,
-        p.montant?.toString()
-      ]) || []
+
+      const paymentFields =
+        batch.payments?.flatMap((p) => [
+          p.compteur?.codeImmeuble,
+          p.compteur?.province,
+          p.compteur?.quartier,
+          p.compteur?.nomPropriete,
+          p.compteur?.rg,
+          p.compteur?.adresse,
+          p.compteur?.localisation,
+          p.typeCompteur,
+          p.numeroCompteur,
+          p.numeroFacture,
+          p.montant?.toString(),
+        ]) || []
 
       const allFields = [...batchFields, ...paymentFields]
-      const globalSearchMatch = searchText === "" || allFields.some(field => 
-        field?.toLowerCase().includes(text)
-      )
+      const globalSearchMatch = searchText === "" || allFields.some((field) => field?.toLowerCase().includes(text))
 
-      // Filtres individuels
-      const individualFiltersMatch = 
+      const periodePaiementMatch = filters.periodePaiement === "" || 
+        getPeriodePaiementText(batch).toLowerCase().includes(filters.periodePaiement.toLowerCase())
+
+      const individualFiltersMatch =
         (filters.id === "" || batch.id?.toString().includes(filters.id)) &&
         (filters.date === "" || new Date(batch.date).toLocaleDateString("fr-FR").includes(filters.date)) &&
+        periodePaiementMatch && // Application du filtre période de paiement
         (filters.total === "" || batch.total?.toString().includes(filters.total)) &&
-        (filters.chequePdf === "" || 
-          (filters.chequePdf === "oui" && batch.chequePdf) || 
+        (filters.chequePdf === "" ||
+          (filters.chequePdf === "oui" && batch.chequePdf) ||
           (filters.chequePdf === "non" && !batch.chequePdf)) &&
-        (filters.recuPdf === "" || 
-          (filters.recuPdf === "oui" && batch.recuPdf) || 
+        (filters.recuPdf === "" ||
+          (filters.recuPdf === "oui" && batch.recuPdf) ||
           (filters.recuPdf === "non" && !batch.recuPdf)) &&
-        (filters.codeImmeuble === "" || batch.payments?.some(p => 
-          p.compteur?.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase()))) &&
-        (filters.province === "" || batch.payments?.some(p => 
-          p.compteur?.province?.toLowerCase().includes(filters.province.toLowerCase()))) &&
-        (filters.quartier === "" || batch.payments?.some(p => 
-          p.compteur?.quartier?.toLowerCase().includes(filters.quartier.toLowerCase()))) &&
-        (filters.nomPropriete === "" || batch.payments?.some(p => 
-          p.compteur?.nomPropriete?.toLowerCase().includes(filters.nomPropriete.toLowerCase()))) &&
-        (filters.rg === "" || batch.payments?.some(p => 
-          p.compteur?.rg?.toLowerCase().includes(filters.rg.toLowerCase()))) &&
-        (filters.adresse === "" || batch.payments?.some(p => 
-          p.compteur?.adresse?.toLowerCase().includes(filters.adresse.toLowerCase()))) &&
-        (filters.localisation === "" || batch.payments?.some(p => 
-          p.compteur?.localisation?.toLowerCase().includes(filters.localisation.toLowerCase()))) &&
-        (filters.typeCompteur === "" || batch.payments?.some(p => 
-          p.typeCompteur?.toLowerCase().includes(filters.typeCompteur.toLowerCase()))) &&
-        (filters.numeroCompteur === "" || batch.payments?.some(p => 
-          p.numeroCompteur?.toLowerCase().includes(filters.numeroCompteur.toLowerCase()))) &&
-        (filters.numeroFacture === "" || batch.payments?.some(p => 
-          p.numeroFacture?.toLowerCase().includes(filters.numeroFacture.toLowerCase()))) &&
-        (filters.montant === "" || batch.payments?.some(p => 
-          p.montant?.toString().includes(filters.montant)))
+        (filters.codeImmeuble === "" ||
+          batch.payments?.some((p) =>
+            p.compteur?.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase()),
+          )) &&
+        (filters.province === "" ||
+          batch.payments?.some((p) => p.compteur?.province?.toLowerCase().includes(filters.province.toLowerCase()))) &&
+        (filters.quartier === "" ||
+          batch.payments?.some((p) => p.compteur?.quartier?.toLowerCase().includes(filters.quartier.toLowerCase()))) &&
+        (filters.nomPropriete === "" ||
+          batch.payments?.some((p) =>
+            p.compteur?.nomPropriete?.toLowerCase().includes(filters.nomPropriete.toLowerCase()),
+          )) &&
+        (filters.rg === "" ||
+          batch.payments?.some((p) => p.compteur?.rg?.toLowerCase().includes(filters.rg.toLowerCase()))) &&
+        (filters.adresse === "" ||
+          batch.payments?.some((p) => p.compteur?.adresse?.toLowerCase().includes(filters.adresse.toLowerCase()))) &&
+        (filters.localisation === "" ||
+          batch.payments?.some((p) =>
+            p.compteur?.localisation?.toLowerCase().includes(filters.localisation.toLowerCase()),
+          )) &&
+        (filters.typeCompteur === "" ||
+          batch.payments?.some((p) => p.typeCompteur?.toLowerCase().includes(filters.typeCompteur.toLowerCase()))) &&
+        (filters.numeroCompteur === "" ||
+          batch.payments?.some((p) =>
+            p.numeroCompteur?.toLowerCase().includes(filters.numeroCompteur.toLowerCase()),
+          )) &&
+        (filters.numeroFacture === "" ||
+          batch.payments?.some((p) => p.numeroFacture?.toLowerCase().includes(filters.numeroFacture.toLowerCase()))) &&
+        (filters.montant === "" || batch.payments?.some((p) => p.montant?.toString().includes(filters.montant)))
 
       return globalSearchMatch && individualFiltersMatch
     })
-    .sort((a, b) => new Date(b.date) - new Date(a.date)) // Tri par date décroissante
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
 
-  // Vérifier s'il y a des filtres actifs
-  const hasActiveFilters = Object.values(filters).some(filter => filter !== "")
+  const hasActiveFilters = Object.values(filters).some((filter) => filter !== "")
 
   return (
     <>
@@ -262,12 +306,11 @@ export default function Historique() {
           </div>
         </div>
 
-        {/* Recherche globale */}
         <div className="search-bar">
           <Search size={20} className="search-icon" />
           <input
             type="text"
-            placeholder="Rechercher par ID, date, total, propriété, compteur, facture..."
+            placeholder="Rechercher par ID, date, période de paiement, total, propriété, compteur, facture..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="search-input"
@@ -279,31 +322,24 @@ export default function Historique() {
           )}
         </div>
 
-        {/* Bouton pour afficher/masquer les filtres avancés */}
         <div className="filters-header">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => setShowFilters(!showFilters)}
             className="filter-toggle-btn"
           >
             <Filter size={16} />
-            Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter(f => f !== "").length})`}
+            Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter((f) => f !== "").length})`}
           </Button>
-          
+
           {hasActiveFilters && (
-            <Button 
-              variant="outline-danger" 
-              size="sm" 
-              onClick={clearAllFilters}
-              className="clear-filters-btn"
-            >
+            <Button variant="outline-danger" size="sm" onClick={clearAllFilters} className="clear-filters-btn">
               <XCircleFill size={14} />
               Effacer tous les filtres
             </Button>
           )}
         </div>
 
-        {/* Filtres avancés par colonne */}
         {showFilters && (
           <div className="advanced-filters animate-fadeInUp">
             <div className="filters-grid">
@@ -313,7 +349,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par ID..."
                   value={filters.id}
-                  onChange={(e) => handleFilterChange('id', e.target.value)}
+                  onChange={(e) => handleFilterChange("id", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -324,7 +360,18 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par date..."
                   value={filters.date}
-                  onChange={(e) => handleFilterChange('date', e.target.value)}
+                  onChange={(e) => handleFilterChange("date", e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Période de paiement</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par période (ex: janvier 2024)..."
+                  value={filters.periodePaiement}
+                  onChange={(e) => handleFilterChange("periodePaiement", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -335,7 +382,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par total..."
                   value={filters.total}
-                  onChange={(e) => handleFilterChange('total', e.target.value)}
+                  onChange={(e) => handleFilterChange("total", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -344,7 +391,7 @@ export default function Historique() {
                 <label className="filter-label">Chèque</label>
                 <select
                   value={filters.chequePdf}
-                  onChange={(e) => handleFilterChange('chequePdf', e.target.value)}
+                  onChange={(e) => handleFilterChange("chequePdf", e.target.value)}
                   className="filter-input"
                 >
                   <option value="">Tous</option>
@@ -357,7 +404,7 @@ export default function Historique() {
                 <label className="filter-label">Reçu</label>
                 <select
                   value={filters.recuPdf}
-                  onChange={(e) => handleFilterChange('recuPdf', e.target.value)}
+                  onChange={(e) => handleFilterChange("recuPdf", e.target.value)}
                   className="filter-input"
                 >
                   <option value="">Tous</option>
@@ -372,7 +419,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par code..."
                   value={filters.codeImmeuble}
-                  onChange={(e) => handleFilterChange('codeImmeuble', e.target.value)}
+                  onChange={(e) => handleFilterChange("codeImmeuble", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -383,7 +430,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par province..."
                   value={filters.province}
-                  onChange={(e) => handleFilterChange('province', e.target.value)}
+                  onChange={(e) => handleFilterChange("province", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -394,7 +441,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par quartier..."
                   value={filters.quartier}
-                  onChange={(e) => handleFilterChange('quartier', e.target.value)}
+                  onChange={(e) => handleFilterChange("quartier", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -405,7 +452,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par propriété..."
                   value={filters.nomPropriete}
-                  onChange={(e) => handleFilterChange('nomPropriete', e.target.value)}
+                  onChange={(e) => handleFilterChange("nomPropriete", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -416,7 +463,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par RG..."
                   value={filters.rg}
-                  onChange={(e) => handleFilterChange('rg', e.target.value)}
+                  onChange={(e) => handleFilterChange("rg", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -427,7 +474,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par adresse..."
                   value={filters.adresse}
-                  onChange={(e) => handleFilterChange('adresse', e.target.value)}
+                  onChange={(e) => handleFilterChange("adresse", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -438,7 +485,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par localisation..."
                   value={filters.localisation}
-                  onChange={(e) => handleFilterChange('localisation', e.target.value)}
+                  onChange={(e) => handleFilterChange("localisation", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -447,7 +494,7 @@ export default function Historique() {
                 <label className="filter-label">Type Compteur</label>
                 <select
                   value={filters.typeCompteur}
-                  onChange={(e) => handleFilterChange('typeCompteur', e.target.value)}
+                  onChange={(e) => handleFilterChange("typeCompteur", e.target.value)}
                   className="filter-input"
                 >
                   <option value="">Tous les types</option>
@@ -462,7 +509,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par compteur..."
                   value={filters.numeroCompteur}
-                  onChange={(e) => handleFilterChange('numeroCompteur', e.target.value)}
+                  onChange={(e) => handleFilterChange("numeroCompteur", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -473,7 +520,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par facture..."
                   value={filters.numeroFacture}
-                  onChange={(e) => handleFilterChange('numeroFacture', e.target.value)}
+                  onChange={(e) => handleFilterChange("numeroFacture", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -484,7 +531,7 @@ export default function Historique() {
                   type="text"
                   placeholder="Filtrer par montant..."
                   value={filters.montant}
-                  onChange={(e) => handleFilterChange('montant', e.target.value)}
+                  onChange={(e) => handleFilterChange("montant", e.target.value)}
                   className="filter-input"
                 />
               </div>
@@ -504,6 +551,7 @@ export default function Historique() {
                 <tr>
                   <th>ID</th>
                   <th>Date</th>
+                  <th>Période de paiement</th>
                   <th>Total</th>
                   <th>Chèque</th>
                   <th>Reçu</th>
@@ -518,9 +566,9 @@ export default function Historique() {
                         <ClockHistory size={48} className="text-muted mb-3" />
                         <p className="text-muted">Aucun historique de paiement trouvé</p>
                         {(searchText || hasActiveFilters) && (
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
                             onClick={() => {
                               setSearchText("")
                               clearAllFilters()
@@ -545,6 +593,9 @@ export default function Historique() {
                         })}
                       </td>
                       <td>
+                        <strong>{formatPeriodePaiement(b)}</strong>
+                      </td>
+                      <td>
                         <strong className="text-success">{formatMontantFR(b.total)}</strong>
                       </td>
                       <td>
@@ -563,15 +614,46 @@ export default function Historique() {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <Link to={`/historique/${b.id}`} className="btn btn-primary btn-sm">
-                            <EyeFill size={16} />
-                          </Link>
-                          <button className="btn btn-success btn-sm" onClick={() => handleDownloadPdf(b.id)}>
-                            <FileEarmarkPdfFill size={16} />
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDeleteClick(b)}>
-                            <TrashFill size={16} />
-                          </button>
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={
+                              <Tooltip id={`tooltip-view-${b.id}`} className="custom-tooltip">
+                                Afficher les détails
+                              </Tooltip>
+                            }
+                          >
+                            <span>
+                              <Link to={`/historique/${b.id}`} className="btn btn-primary btn-sm" style={{ background: "#0d9488" }}>
+                                <EyeFill size={16} />
+                              </Link>
+                            </span>
+                          </OverlayTrigger>
+
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={
+                              <Tooltip id={`tooltip-download-${b.id}`} className="custom-tooltip">
+                                Télécharger le PDF
+                              </Tooltip>
+                            }
+                          >
+                            <button className="btn btn-success btn-sm" onClick={() => handleDownloadPdf(b.id)} style={{ background: "#0d9488" }}>
+                              <FileEarmarkPdfFill size={16} />
+                            </button>
+                          </OverlayTrigger>
+
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={
+                              <Tooltip id={`tooltip-delete-${b.id}`} className="custom-tooltip">
+                                Supprimer
+                              </Tooltip>
+                            }
+                          >
+                            <button className="btn btn-danger btn-sm" onClick={() => handleDeleteClick(b)}>
+                              <TrashFill size={16} />
+                            </button>
+                          </OverlayTrigger>
                         </div>
                       </td>
                     </tr>
@@ -808,6 +890,25 @@ export default function Historique() {
         .action-buttons {
           display: flex;
           gap: 8px;
+        }
+
+        /* Styles personnalisés pour les tooltips */
+        .custom-tooltip {
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          letter-spacing: 0.3px !important;
+          border-radius: 6px !important;
+        }
+
+        .custom-tooltip .tooltip-inner {
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+          border-radius: 6px !important;
+          padding: 8px 12px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        .custom-tooltip.bs-tooltip-top .tooltip-arrow::before {
+          border-top-color: #1f2937 !important;
         }
 
         @keyframes fadeInDown {

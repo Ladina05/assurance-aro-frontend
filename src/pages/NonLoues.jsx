@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getCompteurs, updateSousCompteur, payBatch } from "../services/api"
-import { Modal, Button, Form } from "react-bootstrap"
+import { Modal, Button, Form, OverlayTrigger, Tooltip } from "react-bootstrap"
 import {
   HouseSlashFill,
   Search,
@@ -10,7 +10,6 @@ import {
   PlusCircleFill,
   TrashFill,
   CashStack,
-  PencilSquare,
   Filter
 } from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
@@ -44,13 +43,21 @@ export default function NonLoues() {
     montant: ""
   })
 
-  const formatMontant = (valeur) => {
-    if (typeof valeur !== "number") return "-"
-    return valeur.toLocaleString("fr-FR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
+  const [moisPaiement, setMoisPaiement] = useState(new Date().getMonth() + 1)
+  const [anneePaiement, setAnneePaiement] = useState(new Date().getFullYear())
+
+  const formatMontant = (montant) => {
+    if (montant == null) return "-"
+    return (
+      montant
+        .toLocaleString("fr-FR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+        .replace(/\u202F/g, "  ")
+    )
   }
+
 
   async function load() {
     setLoading(true)
@@ -160,14 +167,70 @@ export default function NonLoues() {
     }
 
     try {
-      await payBatch(payables)
-      addToast("Paiement effectué avec succès", "success")
+      await payBatch(moisPaiement, anneePaiement)
+      addToast(`Paiement effectué avec succès pour ${getNomMois(moisPaiement)} ${anneePaiement}`, "success")
       load()
     } catch (err) {
       addToast(err.message, "error")
     } finally {
       setShowPayConfirm(false)
     }
+  }
+
+  // Fonction pour regrouper les paiements par numéro de facture (comme dans le PDF)
+  const getGroupedPayments = () => {
+    const allPayments = compteurs.flatMap(c =>
+      c.sousCompteurs
+        .filter(s => s.montant && s.montant > 0)
+        .map(s => ({
+          ...s,
+          compteur: {
+            province: c.province,
+            quartier: c.quartier,
+            adresse: c.adresse,
+            rg: c.rg
+          }
+        }))
+    );
+
+    // Regrouper par numeroFacture comme dans le PDF
+    const groupedPayments = Object.values(
+      allPayments.reduce((acc, p) => {
+        const key = p.numeroFacture || `nofacture-${p.id}`;
+        if (!acc[key]) {
+          acc[key] = {
+            ...p,
+            typeCompteur: [p.typeCompteur],
+            numeroCompteur: [p.numeroCompteur],
+            montant: p.montant || 0,
+            province: p.compteur.province,
+            quartier: p.compteur.quartier,
+            adresse: p.compteur.adresse,
+            rg: p.compteur.rg
+          };
+        } else {
+          acc[key].typeCompteur.push(p.typeCompteur);
+          acc[key].numeroCompteur.push(p.numeroCompteur);
+          acc[key].montant += p.montant || 0;
+        }
+        return acc;
+      }, {})
+    );
+
+    // Trier par quartier comme dans le PDF
+    return groupedPayments.sort((a, b) => {
+      const q1 = a.quartier?.toLowerCase() || '';
+      const q2 = b.quartier?.toLowerCase() || '';
+      return q1.localeCompare(q2);
+    });
+  };
+
+  const getNomMois = (mois) => {
+    const nomsMois = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ]
+    return nomsMois[mois - 1]
   }
 
   const handleDeleteClick = (sousCompteur) => {
@@ -247,7 +310,7 @@ export default function NonLoues() {
       const globalSearchMatch = searchText === "" || mainMatch || sousMatch
 
       // Filtres individuels
-      const individualFiltersMatch = 
+      const individualFiltersMatch =
         (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
         (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
         (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
@@ -282,16 +345,69 @@ export default function NonLoues() {
         variant="danger"
       />
 
-      <ConfirmDialog
+      <Modal
         show={showPayConfirm}
         onHide={() => setShowPayConfirm(false)}
-        onConfirm={handlePayBatch}
-        title="Confirmer le paiement"
-        message={`Êtes-vous sûr de vouloir effectuer le paiement de ${formatMontant(totalMontant)} ?`}
-        confirmText="Payer"
-        cancelText="Annuler"
-        variant="success"
-      />
+        size="xl"
+        dialogClassName="custom-payment-modal"
+        centered
+      >
+        <Modal.Header closeButton style={{ background: "#0d9488" }}>
+          <Modal.Title>Confirmer le paiement</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div>
+            <p>Êtes-vous sûr de vouloir effectuer le paiement de <strong>{formatMontant(totalMontant)} Ar</strong> pour le mois de: <strong>{getNomMois(moisPaiement)} {anneePaiement}</strong> ?</p>
+
+            {/* Tableau récapitulatif */}
+            <div className="recap-table-container">
+              <h6 className="recap-title">Détail des paiements</h6>
+              <div className="table-responsive">
+                <table className="recap-table">
+                  <thead>
+                    <tr>
+                      <th>Province</th>
+                      <th>Quartier</th>
+                      <th>Adresse</th>
+                      <th>RG</th>
+                      <th>Type</th>
+                      <th>N° Facture</th>
+                      <th>Montant (Ar)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getGroupedPayments().map((paiement, index) => (
+                      <tr key={index}>
+                        <td>{paiement.province || 'N/A'}</td>
+                        <td>{paiement.quartier}</td>
+                        <td>{paiement.adresse || '-'}</td>
+                        <td>{paiement.rg || '-'}</td>
+                        <td>{paiement.typeCompteur.join(' / ')}</td>
+                        <td>{paiement.numeroFacture || 'N/A'}</td>
+                        <td className="text-end">{formatMontant(paiement.montant)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="recap-total">
+                      <td colSpan="6" className="text-end"><strong>TOTAL GÉNÉRAL</strong></td>
+                      <td className="text-end"><strong>{formatMontant(totalMontant)}</strong></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setShowPayConfirm(false)}>
+            Annuler
+          </Button>
+          <Button variant="success" onClick={handlePayBatch} style={{ background: "#0d9488" }}>
+            Payer
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <div className="page-container animate-fadeInUp">
         <div className="page-header">
@@ -306,13 +422,51 @@ export default function NonLoues() {
           </div>
           <div className="total-card">
             <div className="total-label">Total à payer</div>
-            <div className="total-amount">{formatMontant(totalMontant)} Ar</div>
+            <div className="total-amount" style={{ color: "#0d9488" }}>{formatMontant(totalMontant)} Ar</div>
+            {/* Sélecteurs pour le mois et l'année de paiement */}
+            <div className="paiement-date-selectors">
+              <div className="date-selector-group">
+                <label className="date-label">Mois de paiement</label>
+                <select
+                  value={moisPaiement}
+                  onChange={(e) => setMoisPaiement(parseInt(e.target.value))}
+                  className="date-select"
+                >
+                  <option value={1}>Janvier</option>
+                  <option value={2}>Février</option>
+                  <option value={3}>Mars</option>
+                  <option value={4}>Avril</option>
+                  <option value={5}>Mai</option>
+                  <option value={6}>Juin</option>
+                  <option value={7}>Juillet</option>
+                  <option value={8}>Août</option>
+                  <option value={9}>Septembre</option>
+                  <option value={10}>Octobre</option>
+                  <option value={11}>Novembre</option>
+                  <option value={12}>Décembre</option>
+                </select>
+              </div>
+
+              <div className="date-selector-group">
+                <label className="date-label">Année de paiement</label>
+                <select
+                  value={anneePaiement}
+                  onChange={(e) => setAnneePaiement(parseInt(e.target.value))}
+                  className="date-select"
+                >
+                  <option value={2023}>2023</option>
+                  <option value={2024}>2024</option>
+                  <option value={2025}>2025</option>
+                </select>
+              </div>
+            </div>
             <Button
               variant="success"
               size="sm"
               onClick={() => setShowPayConfirm(true)}
               disabled={totalMontant === 0}
               className="mt-2"
+              style={{ background: "#0d9488" }}
             >
               <CashStack size={16} className="me-1" />
               Payer
@@ -339,19 +493,19 @@ export default function NonLoues() {
 
         {/* Bouton pour afficher/masquer les filtres avancés */}
         <div className="filters-header">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => setShowFilters(!showFilters)}
             className="filter-toggle-btn"
           >
             <Filter size={16} />
             Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter(f => f !== "").length})`}
           </Button>
-          
+
           {hasActiveFilters && (
-            <Button 
-              variant="outline-danger" 
-              size="sm" 
+            <Button
+              variant="outline-danger"
+              size="sm"
               onClick={clearAllFilters}
               className="clear-filters-btn"
             >
@@ -523,9 +677,9 @@ export default function NonLoues() {
                         <HouseSlashFill size={48} className="text-muted mb-3" />
                         <p className="text-muted">Aucun compteur libre trouvé</p>
                         {(searchText || hasActiveFilters) && (
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
                             onClick={() => {
                               setSearchText("")
                               clearAllFilters()
@@ -591,12 +745,12 @@ export default function NonLoues() {
                           <div className="compteurs-list">
                             {isTous ? (
                               <div style={{ textAlign: 'center' }}>
-                                <strong className="text-success">{formatMontant(totalMontantTous)}</strong>
+                                <strong className="text-success" style={{ color: "#0d9488" }}>{formatMontant(totalMontantTous)}</strong>
                               </div>
                             ) : (
                               c.sousCompteurs.map((sc, idx) => (
                                 <div key={idx} className="compteur-line">
-                                  <strong className="text-success">{sc.montant != null ? formatMontant(sc.montant) : "-"}</strong>
+                                  <strong className="text-success" style={{ color: "#0d9488" }}>{sc.montant != null ? formatMontant(sc.montant) : "-"}</strong>
                                 </div>
                               ))
                             )}
@@ -606,13 +760,17 @@ export default function NonLoues() {
                         {/* Actions */}
                         <td>
                           <div className="action-buttons">
-                            <Button variant="primary" size="sm" onClick={() => handleShowModal(c)}>
-                              <PlusCircleFill size={16} />
-                            </Button>
-                            {c.sousCompteurs.some((sc) => sc.numeroFacture || sc.montant) && (
-                              <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c.sousCompteurs[0])}>
-                                <TrashFill size={16} />
+                            <OverlayTrigger placement="top" overlay={<Tooltip>Ajouter une facture</Tooltip>}>
+                              <Button variant="primary" size="sm" onClick={() => handleShowModal(c)} style={{ background: "#0d9488" }}>
+                                <PlusCircleFill size={16} />
                               </Button>
+                            </OverlayTrigger>
+                            {c.sousCompteurs.some((sc) => sc.numeroFacture || sc.montant) && (
+                              <OverlayTrigger placement="top" overlay={<Tooltip>Supprimer toutes les factures</Tooltip>}>
+                                <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c.sousCompteurs[0])}>
+                                  <TrashFill size={16} />
+                                </Button>
+                              </OverlayTrigger>
                             )}
                           </div>
                         </td>
@@ -626,7 +784,7 @@ export default function NonLoues() {
         )}
 
         <Modal show={showModal} onHide={handleCloseModal}>
-          <Modal.Header closeButton>
+          <Modal.Header closeButton style={{ background: "#0d9488" }}>
             <Modal.Title>Ajouter N° Facture / Montant</Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -670,7 +828,7 @@ export default function NonLoues() {
             <Button variant="outline-secondary" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button variant="primary" onClick={handleSubmit}>
+            <Button variant="primary" onClick={handleSubmit} style={{ background: "#0d9488" }}>
               Valider
             </Button>
           </Modal.Footer>
@@ -862,6 +1020,12 @@ export default function NonLoues() {
           text-align: center;
         }
 
+        th, td {
+          background-color: white;
+          padding: 8px;
+          border: 1px solid #ddd;
+        }
+
         .empty-state {
           padding: 40px;
         }
@@ -947,8 +1111,43 @@ export default function NonLoues() {
         .total-amount {
           font-size: 28px;
           font-weight: 800;
-          color: #16a34a;
+          color: #0d9488;
           margin-bottom: 8px;
+        }
+
+        .paiement-date-selectors {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+
+        .date-selector-group {
+          flex: 1;
+          min-width: 120px;
+        }
+
+        .date-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #6b7280;
+          margin-bottom: 4px;
+          display: block;
+        }
+
+        .date-select {
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 13px;
+          background: white;
+        }
+
+        .date-select:focus {
+          outline: none;
+          border-color: #16a34a;
+          box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.1);
         }
 
         @media (max-width: 768px) {
@@ -993,6 +1192,108 @@ export default function NonLoues() {
           .filters-header {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          /* Modal personnalisé pour le paiement */
+          .custom-payment-modal {
+            max-width: 1400px !important;
+            width: 95% !important;
+          }
+
+          .modal-xl.custom-payment-modal {
+            max-width: 1400px !important;
+          }
+
+          .recap-table-container {
+            margin-top: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+          }
+
+          .recap-title {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+          }
+
+          .recap-table {
+            width: 100%;
+            font-size: 12px;
+            border-collapse: collapse;
+            min-width: 1200px; /* Augmenté pour plus de largeur */
+          }
+
+          .recap-table th {
+            background: #f3f4f6;
+            padding: 10px 12px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+            white-space: nowrap;
+          }
+
+          .recap-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: top;
+            white-space: nowrap;
+          }
+
+          .recap-table tbody tr:hover {
+            background: #f9fafb;
+          }
+
+          .recap-total {
+            background: #ecfdf5;
+            font-weight: 600;
+          }
+
+          .recap-total td {
+            border-top: 2px solid #10b981;
+            border-bottom: none;
+            padding: 14px 12px;
+          }
+
+          /* Container responsive pour le tableau */
+          .table-responsive {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+          }
+
+          /* Ajustements spécifiques pour le modal de paiement */
+          .modal-body {
+            padding: 20px;
+          }
+
+          @media (max-width: 1400px) {
+            .custom-payment-modal {
+              max-width: 95% !important;
+              margin: 1.75rem auto;
+            }
+          }
+
+          @media (max-width: 768px) {
+            .custom-payment-modal {
+              max-width: 98% !important;
+              margin: 0.5rem auto;
+            }
+            
+            .recap-table {
+              font-size: 11px;
+              min-width: 1000px;
+            }
+            
+            .recap-table th,
+            .recap-table td {
+              padding: 6px 8px;
+            }
           }
         }
       `}</style>

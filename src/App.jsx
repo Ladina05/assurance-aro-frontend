@@ -47,11 +47,11 @@ export default function App() {
             <div className="header-container">
               <div className="header-brand">
                 <div className="brand-logo">
-                  <img src="/Aro.jpeg" alt="Logo Aro" width={80} height={80} />
+                  <img src="/Aro.jpeg" alt="Logo Aro" width={100} height={80} />
                 </div>
+                <br />
                 <div className="brand-text">
-                  <h1 className="brand-title">ARO IMMO</h1>
-                  <p className="brand-subtitle">Gestion des compteurs</p>
+                  <h1 className="brand-title">GESTION DES COMPTEURS</h1>
                 </div>
               </div>
 

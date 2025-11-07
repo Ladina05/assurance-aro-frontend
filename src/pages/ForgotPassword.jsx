@@ -39,10 +39,10 @@ export default function ForgotPassword() {
             <div className="auth-header">
               <div className="auth-logo">
                 <div className="logo-circle">
-                  <img src="/Aro.jpeg" alt="ARO IMMO" width={80} height={80} />
+                  <img src="/Aro.jpeg" alt="ARO IMMO" width={200} height={150} />
                 </div>
               </div>
-              <div className="success-icon animate-fade-in">
+              <div className="success-icon animate-fade-in" style={{ color: "#0d9488" }}>
                 <CheckCircleFill size={64} className="text-success" />
               </div>
               <h2 className="auth-title">Email envoyé !</h2>
@@ -99,9 +99,10 @@ export default function ForgotPassword() {
           <div className="auth-header">
             <div className="auth-logo">
               <div className="logo-circle">
-                <img src="/Aro.jpeg" alt="ARO IMMO" width={80} height={80} />
+                <img src="/Aro.jpeg" alt="ARO IMMO" width={200} height={150} />
               </div>
             </div>
+            <br />
             <h2 className="auth-title">Mot de passe oublié</h2>
             <p className="auth-subtitle">
               Entrez votre email pour recevoir un lien de réinitialisation
@@ -124,7 +125,7 @@ export default function ForgotPassword() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading}>
+            <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading} style={{ background: "#0d9488" }}>
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" />

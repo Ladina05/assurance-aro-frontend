@@ -85,9 +85,13 @@ export async function deleteCompteur(id) {
 }
 
 // Paiement
-export async function payBatch() {
+export async function payBatch(moisPaiement, anneePaiement) {
   return authFetch(`${API_BASE}/payment-batches`, {
-    method: 'POST'
+    method: 'POST',
+    body: JSON.stringify({ 
+      moisPaiement: moisPaiement || new Date().getMonth() + 1,
+      anneePaiement: anneePaiement || new Date().getFullYear()
+    })
   });
 }
 

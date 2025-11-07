@@ -138,7 +138,7 @@ export default function ResetPassword() {
           <div className="auth-header">
             <div className="auth-logo">
               <div className="logo-circle">
-                <img src="/Aro.jpeg" alt="ARO IMMO" width={80} height={80} />
+                <img src="/Aro.jpeg" alt="ARO IMMO" width={180} height={130} />
               </div>
             </div>
             <div className="success-icon">
@@ -194,7 +194,7 @@ export default function ResetPassword() {
               />
             </div>
 
-            <button type="submit" className="btn btn-success w-100 btn-lg" disabled={loading}>
+            <button type="submit" className="btn btn-success w-100 btn-lg" disabled={loading} style={{ background: "#0d9488" }}>
               {loading ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" />

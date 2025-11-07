@@ -123,7 +123,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <button className="btn btn-primary btn-lg w-100 mt-2" onClick={() => setShowChangePwd(true)}>
+            <button className="btn btn-primary btn-lg w-100 mt-2" onClick={() => setShowChangePwd(true)} style={{ background: "#0d9488" }}>
               <ShieldCheck size={20} /> Changer le mot de passe
             </button>
           </div>
@@ -135,8 +135,8 @@ export default function Profile() {
             </button>
           </div>
 
-          <Modal show={showChangePwd} onHide={() => setShowChangePwd(false)} centered>
-            <Modal.Header closeButton>
+          <Modal show={showChangePwd} onHide={() => setShowChangePwd(false)} centered >
+            <Modal.Header closeButton style={{ background: "#0d9488" }}>
               <Modal.Title>Changer le mot de passe</Modal.Title>
             </Modal.Header>
             <Modal.Body>
@@ -185,7 +185,7 @@ export default function Profile() {
               <button className="btn btn-secondary" onClick={() => setShowChangePwd(false)}>
                 Annuler
               </button>
-              <button className="btn btn-success" onClick={handleChangePassword} disabled={loadingPwd}>
+              <button className="btn btn-success" onClick={handleChangePassword} disabled={loadingPwd} style={{ background: "#0d9488" }}>
                 {loadingPwd ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" />
