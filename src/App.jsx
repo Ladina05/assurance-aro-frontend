@@ -1,6 +1,6 @@
 "use client"
 
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom"
 import { AuthContext } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
@@ -15,12 +15,38 @@ import Register from "./pages/Register"
 import Profile from "./pages/Profile"
 import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
-import { HouseFill, Grid3x3GapFill, HouseSlashFill, ClockHistory, PersonCircle } from "react-bootstrap-icons"
+import Evolution from "./pages/Evolution"
+import { HouseFill, Grid3x3GapFill, HouseSlashFill, ClockHistory, PersonCircle, Camera, BarChart } from "react-bootstrap-icons"
+import ProfilePictureModal from "./components/ProfilePictureModal"
+import { uploadProfilePicture, deleteProfilePicture } from "./services/api"
+import { useToast } from "./hooks/useToast"
+import ToastContainer from "./components/ToastContainer"
 import "./App.css"
 
 export default function App() {
-  const { user, loading } = useContext(AuthContext)
+  const { user, loading, updateUser } = useContext(AuthContext)
   const location = useLocation()
+  const [showProfilePictureModal, setShowProfilePictureModal] = useState(false)
+  const { toasts, addToast, removeToast } = useToast()
+
+  const handleProfilePictureUpdate = async (profilePicture) => {
+    try {
+      if (profilePicture === null) {
+        // Supprimer la photo
+        const response = await deleteProfilePicture();
+        updateUser(response.user);
+        addToast("Photo de profil supprimée avec succès", "success");
+      } else {
+        // Uploader nouvelle photo
+        const response = await uploadProfilePicture(profilePicture);
+        updateUser(response.user);
+        addToast("Photo de profil mise à jour avec succès", "success");
+      }
+    } catch (err) {
+      addToast(err.message, "error");
+      throw err;
+    }
+  };
 
   if (loading) {
     return (
@@ -37,10 +63,20 @@ export default function App() {
     { path: "/loues", label: "Loués", icon: <HouseFill size={20} /> },
     { path: "/non-loues", label: "Libres", icon: <HouseSlashFill size={20} /> },
     { path: "/historique", label: "Historique", icon: <ClockHistory size={20} /> },
+    { path: "/evolution", label: "Évolution", icon: <BarChart size={20} /> },
   ]
 
   return (
     <div className="app-wrapper">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      <ProfilePictureModal
+        show={showProfilePictureModal}
+        onHide={() => setShowProfilePictureModal(false)}
+        user={user}
+        onUpdate={handleProfilePictureUpdate}
+      />
+
       {user && (
         <>
           <header className="app-header">
@@ -68,9 +104,35 @@ export default function App() {
                 ))}
               </nav>
 
-              <Link to="/profile" className="header-profile">
-                <PersonCircle size={32} />
-              </Link>
+              <div className="header-profile-section">
+                <div>
+                  <Link to="/profile" className="header-profile-link">
+                    {user.profilePicture ? (
+                      <div className="profile-image-container">
+                        <img
+                          src={user.profilePicture}
+                          alt="Profile"
+                          className="profile-image"
+                        />
+                        <div className="profile-edit-overlay">
+                          <Camera size={14} className="text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="profile-icon-container">
+                        <PersonCircle size={32} className="profile-icon" />
+                        <div className="profile-edit-overlay">
+                          <Camera size={14} className="text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </Link>
+                </div>
+                <Link to="/profile" className="header-profile-link">
+                  <span className="profile-name">{user.name}</span>
+                  <span className="profile-role">{user.role?.toLowerCase()}</span>
+                </Link>
+              </div>
             </div>
           </header>
 
@@ -86,7 +148,15 @@ export default function App() {
               </Link>
             ))}
             <Link to="/profile" className={`mobile-nav-link ${location.pathname === "/profile" ? "active" : ""}`}>
-              <PersonCircle size={20} />
+              {user.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt="Profile"
+                  className="mobile-profile-image"
+                />
+              ) : (
+                <PersonCircle size={20} />
+              )}
               <span>Profil</span>
             </Link>
           </nav>
@@ -96,13 +166,13 @@ export default function App() {
       <main className={user ? "app-main" : "app-main-full"}>
         <Routes>
           {/* Routes publiques */}
-          <Route 
-            path="/login" 
-            element={!user ? <Login /> : <Navigate to="/" replace />} 
+          <Route
+            path="/login"
+            element={!user ? <Login /> : <Navigate to="/" replace />}
           />
-          <Route 
-            path="/register" 
-            element={!user ? <Register /> : <Navigate to="/" replace />} 
+          <Route
+            path="/register"
+            element={!user ? <Register /> : <Navigate to="/" replace />}
           />
 
           <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to="/" replace />} />
@@ -154,6 +224,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <BatchDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/evolution"
+            element={
+              <ProtectedRoute>
+                <Evolution />
               </ProtectedRoute>
             }
           />

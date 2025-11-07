@@ -9,7 +9,7 @@ const getAuthToken = () => {
 // Fonction utilitaire pour les requêtes authentifiées
 const authFetch = async (url, options = {}) => {
   const token = getAuthToken();
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -33,7 +33,7 @@ const authFetch = async (url, options = {}) => {
       window.location.href = '/login';
       throw new Error('Session expirée. Veuillez vous reconnecter.');
     }
-    
+
     const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
     throw new Error(errorData.message || `Erreur ${response.status}`);
   }
@@ -44,7 +44,7 @@ const authFetch = async (url, options = {}) => {
 export async function getCompteurs(loue) {
   const url = new URL(`${API_BASE}/compteurs`);
   if (loue !== undefined) url.searchParams.set('loue', loue ? 'true' : 'false');
-  
+
   return authFetch(url.toString());
 }
 
@@ -79,8 +79,8 @@ export async function updateSousCompteur(id, payload) {
 
 // Supprimer un compteur
 export async function deleteCompteur(id) {
-  return authFetch(`${API_BASE}/compteurs/${id}`, { 
-    method: 'DELETE' 
+  return authFetch(`${API_BASE}/compteurs/${id}`, {
+    method: 'DELETE'
   });
 }
 
@@ -88,7 +88,7 @@ export async function deleteCompteur(id) {
 export async function payBatch(moisPaiement, anneePaiement) {
   return authFetch(`${API_BASE}/payment-batches`, {
     method: 'POST',
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       moisPaiement: moisPaiement || new Date().getMonth() + 1,
       anneePaiement: anneePaiement || new Date().getFullYear()
     })
@@ -242,6 +242,20 @@ export async function getProfile() {
   return authFetch(`${API_BASE}/auth/profile`);
 }
 
+// Photo de profil
+export async function uploadProfilePicture(profilePicture) {
+  return authFetch(`${API_BASE}/auth/profile-picture`, {
+    method: 'PUT',
+    body: JSON.stringify({ profilePicture })
+  });
+}
+
+export async function deleteProfilePicture() {
+  return authFetch(`${API_BASE}/auth/profile-picture`, {
+    method: 'DELETE'
+  });
+}
+
 export async function changePassword(oldPassword, newPassword) {
   return authFetch(`${API_BASE}/auth/change-password`, {
     method: 'PUT',
@@ -292,4 +306,62 @@ export async function verifyResetToken(token) {
   }
 
   return response.json();
+}
+
+export async function getStatistiquesEvolution(rg, annee) {
+  const url = new URL(`${API_BASE}/statistiques/evolution`);
+  url.searchParams.set('rg', rg);
+  url.searchParams.set('annee', annee);
+
+  return authFetch(url.toString());
+}
+
+export async function getStatistiquesGeneral(annee) {
+  const url = new URL(`${API_BASE}/statistiques/general`);
+  if (annee) {
+    url.searchParams.set('annee', annee);
+  }
+  return authFetch(url.toString());
+}
+
+// Export Excel pour l'évolution
+export async function exportEvolutionExcel(rg, annee) {
+  const token = getAuthToken();
+  const url = new URL(`${API_BASE}/statistiques/evolution/export-excel`);
+  url.searchParams.set('rg', rg);
+  url.searchParams.set('annee', annee);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Erreur export Excel');
+  }
+  return response.blob();
+}
+
+// Export PDF pour l'évolution
+export async function exportEvolutionPdf(rg, annee) {
+  const token = getAuthToken();
+  const url = new URL(`${API_BASE}/statistiques/evolution/export-pdf`);
+  url.searchParams.set('rg', rg);
+  url.searchParams.set('annee', annee);
+
+  console.log('URL PDF appelée:', url.toString()); // Debug
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Erreur export PDF:', response.status, errorText);
+    throw new Error(`Erreur export PDF: ${response.status}`);
+  }
+  return response.blob();
 }

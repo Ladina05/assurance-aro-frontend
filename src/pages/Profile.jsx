@@ -2,18 +2,20 @@
 
 import { useContext, useState } from "react"
 import { AuthContext } from "../context/AuthContext"
-import { PersonCircle, EnvelopeFill, BoxArrowRight, ShieldCheck } from "react-bootstrap-icons"
+import { PersonCircle, EnvelopeFill, BoxArrowRight, ShieldCheck, Camera } from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import "./Profile.css"
 import "../styles/animations.css"
 import { Modal, Form } from "react-bootstrap"
-import { changePassword } from "../services/api"
+import { changePassword, uploadProfilePicture, deleteProfilePicture } from "../services/api"
+import ProfilePictureModal from "../components/ProfilePictureModal"
 
 export default function Profile() {
-  const { user, logout } = useContext(AuthContext)
+  const { user, logout, updateUser } = useContext(AuthContext)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showProfilePictureModal, setShowProfilePictureModal] = useState(false)
   const { toasts, addToast, removeToast } = useToast()
   const [showChangePwd, setShowChangePwd] = useState(false)
   const [oldPassword, setOldPassword] = useState("")
@@ -21,6 +23,25 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPwd, setShowPwd] = useState(false)
   const [loadingPwd, setLoadingPwd] = useState(false)
+
+  const handleProfilePictureUpdate = async (profilePicture) => {
+    try {
+      if (profilePicture === null) {
+        // Supprimer la photo
+        const response = await deleteProfilePicture();
+        updateUser(response.user);
+        addToast("Photo de profil supprimée avec succès", "success");
+      } else {
+        // Uploader nouvelle photo
+        const response = await uploadProfilePicture(profilePicture);
+        updateUser(response.user);
+        addToast("Photo de profil mise à jour avec succès", "success");
+      }
+    } catch (err) {
+      addToast(err.message, "error");
+      throw err;
+    }
+  };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -79,11 +100,52 @@ export default function Profile() {
         variant="danger"
       />
 
+      <ProfilePictureModal
+        show={showProfilePictureModal}
+        onHide={() => setShowProfilePictureModal(false)}
+        user={user}
+        onUpdate={handleProfilePictureUpdate}
+      />
+
       <div className="profile-container animate-fadeInUp">
         <div className="profile-card">
           <div className="profile-header">
-            <div className="profile-avatar">
-              <PersonCircle size={80} />
+            <div
+              className="profile-avatar cursor-pointer"
+              onClick={() => setShowProfilePictureModal(true)}
+              style={{ position: 'relative', cursor: 'pointer' }}
+            >
+              {user.profilePicture ? (
+                <>
+                  <img
+                    src={user.profilePicture}
+                    alt="Profile"
+                    className="rounded-circle"
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      objectFit: 'cover',
+                      border: '3px solid white'
+                    }}
+                  />
+                  <div
+                    className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
+                    style={{ transform: 'translate(25%, 25%)' }}
+                  >
+                    <Camera size={16} className="text-white" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <PersonCircle size={80} />
+                  <div
+                    className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
+                    style={{ transform: 'translate(25%, 25%)' }}
+                  >
+                    <Camera size={16} className="text-white" />
+                  </div>
+                </>
+              )}
             </div>
             <h2 className="profile-name">{user.name}</h2>
             <div className="profile-badge">

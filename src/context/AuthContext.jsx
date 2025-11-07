@@ -28,11 +28,17 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const login = async (userData, token) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-  };
+const login = async (userData, token) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(userData));
+  setUser(userData);
+};
+
+// Ajoutez cette fonction pour mettre à jour l'utilisateur
+const updateUser = (userData) => {
+  localStorage.setItem('user', JSON.stringify(userData));
+  setUser(userData);
+};
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -62,6 +68,7 @@ export const AuthProvider = ({ children }) => {
       login, 
       logout, 
       loading,
+      updateUser,
       hasRole,
       hasAnyRole,
       canCreate,
