@@ -103,7 +103,7 @@ export default function Loues() {
       const globalSearchMatch = searchText === "" || mainMatch || sousMatch
 
       // Filtres individuels
-      const individualFiltersMatch = 
+      const individualFiltersMatch =
         (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
         (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
         (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
@@ -130,7 +130,7 @@ export default function Loues() {
       <div className="page-container animate-fadeInUp">
         <div className="page-header">
           <div className="page-header-content">
-            <div className="page-icon" style={{ background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)" }}>
+            <div className="page-icon" style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
               <HouseFill size={28} />
             </div>
             <div>
@@ -163,19 +163,19 @@ export default function Loues() {
 
         {/* Bouton pour afficher/masquer les filtres avancés */}
         <div className="filters-header">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => setShowFilters(!showFilters)}
             className="filter-toggle-btn"
           >
             <Filter size={16} />
             Filtres avancés {hasActiveFilters && `(${Object.values(filters).filter(f => f !== "").length})`}
           </Button>
-          
+
           {hasActiveFilters && (
-            <Button 
-              variant="outline-danger" 
-              size="sm" 
+            <Button
+              variant="outline-danger"
+              size="sm"
               onClick={clearAllFilters}
               className="clear-filters-btn"
             >
@@ -322,9 +322,9 @@ export default function Loues() {
                         <HouseFill size={48} className="text-muted mb-3" />
                         <p className="text-muted">Aucun compteur loué trouvé</p>
                         {(searchText || hasActiveFilters) && (
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
                             onClick={() => {
                               setSearchText("")
                               clearAllFilters()
@@ -353,10 +353,10 @@ export default function Loues() {
                         <div className="compteurs-list">
                           {c.sousCompteurs && c.sousCompteurs.length > 0
                             ? c.sousCompteurs.map((s) => (
-                                <span key={s.id} className={`compteur-badge ${s.typeCompteur}`}>
-                                  {s.numeroCompteur} ({s.typeCompteur})
-                                </span>
-                              ))
+                              <span key={s.id} className={`compteur-badge ${s.typeCompteur}`}>
+                                {s.numeroCompteur} ({s.typeCompteur})
+                              </span>
+                            ))
                             : "-"}
                         </div>
                       </td>
@@ -374,6 +374,10 @@ export default function Loues() {
           padding: 32px 24px;
           max-width: 1600px;
           margin: 0 auto;
+          background: rgba(255, 255, 255, -10) !important; /* ← Plus transparent */
+          backdrop-filter: blur(8px);
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {
@@ -552,6 +556,7 @@ export default function Loues() {
           margin: 0;
           min-width: 1000px;
           text-align: center;
+          background: rgba(255, 255, 255, -10) !important;
         }
 
         .empty-state {

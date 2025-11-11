@@ -99,17 +99,17 @@
 }
 
 .toast-success {
-  border-left-color: #10b981;
+  border-left-color: #05aaaa;
   background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
 }
 
 .toast-success .toast-icon {
-  color: #10b981;
+  color: #05aaaa;
 }
 
 /* Couleur de la barre de progression pour success */
 .toast-success .toast-progress {
-  background-color: #10b981;
+  background-color: #05aaaa;
 }
 
 .toast-error {

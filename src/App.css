@@ -1,9 +1,42 @@
+/* Styles pour le fond d'écran */
 .app-wrapper {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
+/* Overlay TRÈS TRANSPARENT pour voir beaucoup l'image */
+.app-wrapper::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  /* ← CORRIGÉ: 0.1 au lieu de -5 */
+  z-index: -1;
+}
+
+/* Effet flou PRONONCÉ sur l'image de fond */
+.app-wrapper::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/images/Aroimmo.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  filter: blur(3px);
+  z-index: -2;
+}
+
+/* Ajustement pour l'écran de chargement */
 .loading-screen {
   min-height: 100vh;
   display: flex;
@@ -11,51 +44,64 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
 }
 
-.loading-screen p {
-  color: #6b7280;
-  font-size: 16px;
-  font-weight: 500;
+/* Ajustement pour le contenu principal */
+.app-main,
+.app-main-full {
+  position: relative;
+  z-index: 1;
 }
 
-/* Header Styles */
+/* Header Styles avec transparence */
 .app-header {
-  background: white;
-  border-bottom: 2px solid #f3f4f6;
+  background: rgba(255, 255, 255, 0.85) !important;
+  /* ← Semi-transparent */
+  backdrop-filter: blur(12px);
+  /* ← Effet de flou glassmorphism */
+  border-bottom: 1px solid rgba(243, 244, 246, 0.8);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
 }
 
 .header-container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 6px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 32px;
+  gap: 24px;
 }
 
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 50px;
+}
+
+.logo-aro {
+  width: 100px;
+  height: auto;
+  margin-left: 20px;
 }
 
 .brand-logo {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+  background: rgba(13, 148, 136, 0.9);
+  /* ← Semi-transparent */
 }
 
 .brand-text {
@@ -64,11 +110,11 @@
 }
 
 .brand-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #1a1a1a;
-  margin: 0;
-  line-height: 1;
+  font-size: 22px;
+  font-weight: 700;
+  color: #060606;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  /* ← Améliore la lisibilité */
 }
 
 .brand-subtitle {
@@ -76,13 +122,13 @@
   color: #6b7280;
   margin: 0;
   font-weight: 500;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
 }
 
 .header-nav {
   display: flex;
   align-items: center;
   gap: 20px;
-  /* Increased gap from 8px to 20px for better spacing between navigation links */
   flex: 1;
   justify-content: center;
 }
@@ -97,60 +143,42 @@
   color: #6b7280;
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   position: relative;
+  background: rgba(255, 255, 255, 0.7);
+  /* ← Semi-transparent */
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
 }
 
 .nav-link:hover {
-  background: #f0fdf4;
+  background: rgba(240, 253, 244, 0.9);
   color: #0d9488;
+  border-color: rgba(13, 148, 136, 0.3);
+  transform: translateY(-1px);
 }
 
 .nav-link.active {
-  background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.9) 0%, rgba(13, 148, 136, 0.8) 100%);
   color: white;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+  box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
+  border: 1px solid rgba(13, 148, 136, 0.4);
 }
 
-.header-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 10px;
-  text-decoration: none;
-  color: #1a1a1a;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s;
-  border: 2px solid #f3f4f6;
-}
-
-.header-profile:hover {
-  background: #f0fdf4;
-  border-color: #dcfce7;
-  color: #0d9488;
-}
-
-.profile-name {
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Mobile Navigation */
+/* Mobile Navigation avec transparence */
 .mobile-nav {
   display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 2px solid #f3f4f6;
+  background: rgba(255, 255, 255, 0.9);
+  /* ← Semi-transparent */
+  backdrop-filter: blur(15px);
+  border-top: 1px solid rgba(243, 244, 246, 0.8);
   padding: 8px;
   z-index: 100;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .mobile-nav-link {
@@ -164,21 +192,141 @@
   color: #6b7280;
   font-weight: 600;
   font-size: 11px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   flex: 1;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(229, 231, 235, 0.4);
 }
 
 .mobile-nav-link:hover {
-  background: #f0fdf4;
+  background: rgba(240, 253, 244, 0.8);
   color: #0d9488;
+  border-color: rgba(13, 148, 136, 0.3);
 }
 
 .mobile-nav-link.active {
-  background: #f0fdf4;
+  background: rgba(240, 253, 244, 0.9);
   color: #0d9488;
+  border-color: rgba(13, 148, 136, 0.4);
 }
 
-/* Main Content */
+/* Section profil dans le header avec transparence */
+.header-profile-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.header-profile-avatar {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.header-profile-avatar:hover {
+  transform: scale(1.05);
+}
+
+.profile-image-container,
+.profile-icon-container {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+  /* ← Fond semi-transparent */
+  backdrop-filter: blur(5px);
+}
+
+.profile-image {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 2px solid rgba(13, 148, 136, 0.8);
+  border-radius: 50%;
+}
+
+.profile-icon {
+  color: #0d9488;
+  width: 44px;
+  height: 44px;
+}
+
+.profile-edit-overlay {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: rgba(13, 148, 136, 0.9);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(5px);
+}
+
+.header-profile-avatar:hover .profile-edit-overlay {
+  opacity: 1;
+}
+
+.header-profile-link {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s ease;
+  background: rgba(255, 255, 255, 0.7);
+  /* ← Fond semi-transparent */
+  backdrop-filter: blur(8px);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(229, 231, 235, 0.6);
+}
+
+.header-profile-link:hover {
+  color: #0d9488;
+  background: rgba(240, 253, 244, 0.9);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+.profile-name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.profile-role {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: capitalize;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+/* Conteneurs plus transparents pour voir le fond */
+.page-container,
+.table-wrapper,
+.login-container,
+.register-container,
+.profile-container {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Ajustement spécifique pour les pages d'authentification */
+.app-main-full .page-container {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* Le reste de vos styles existants... */
 .app-main {
   flex: 1;
   padding-bottom: 32px;
@@ -192,7 +340,6 @@
 @media (max-width: 1024px) {
   .header-nav {
     gap: 12px;
-    /* Increased gap from 4px to 12px for better spacing on tablets */
   }
 
   .nav-link {

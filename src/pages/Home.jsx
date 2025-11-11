@@ -20,7 +20,7 @@ export default function Home() {
       icon: <Grid3x3GapFill size={25} />,
       link: "/all-compteurs",
       color: "emerald",
-      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+      gradient: "linear-gradient(135deg, #22c5adff 0%, #09b49dff 100%)",
     },
     {
       title: "Compteurs loués",
@@ -28,7 +28,7 @@ export default function Home() {
       icon: <HouseFill size={25} />,
       link: "/loues",
       color: "green",
-      gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+      gradient: "linear-gradient(135deg, #59edd9ff 0%, #089683ff 100%)",
     },
     {
       title: "Compteurs libres",
@@ -36,7 +36,7 @@ export default function Home() {
       icon: <HouseSlashFill size={25} />,
       link: "/non-loues",
       color: "lime",
-      gradient: "linear-gradient(135deg, #84cc16 0%, #65a30d 100%)",
+      gradient: "linear-gradient(135deg, #0af392ff 0%, #04887fff 100%)",
     },
     {
       title: "Évolution par compteur",
@@ -44,7 +44,7 @@ export default function Home() {
       icon: <BarChart size={25} />,
       link: "/evolution",
       color: "purple",
-      gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+      gradient: "linear-gradient(135deg, #0ee2f5ff 0%, #7c3aed 100%)",
     },
     {
       title: "Historique",
@@ -52,7 +52,7 @@ export default function Home() {
       icon: <ClockHistory size={25} />,
       link: "/historique",
       color: "teal",
-      gradient: "linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)",
+      gradient: "linear-gradient(135deg, #14b8a6 0%, #034e47ff 100%)",
     },
   ]
 
@@ -181,7 +181,7 @@ export default function Home() {
               </div>
 
               <div className="stat-card animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-                <div className="stat-card-icon" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)" }}>
+                <div className="stat-card-icon" style={{ background: "linear-gradient(135deg, #0ee2f5ff 0%, #7c3aed 100%)" }}>
                   <Calendar size={24} />
                 </div>
                 <div className="stat-card-content">
@@ -191,7 +191,7 @@ export default function Home() {
               </div>
 
               <div className="stat-card animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-                <div className="stat-card-icon" style={{ background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)" }}>
+                <div className="stat-card-icon" style={{ background: "linear-gradient(135deg, #ecb555ff 0%, #06c0d9ff 100%)" }}>
                   <BarChart size={24} />
                 </div>
                 <div className="stat-card-content">
@@ -205,7 +205,7 @@ export default function Home() {
           {/* Graphique des paiements */}
           <div className="chart-section">
             <div className="chart-header">
-              <h3 className="chart-title">Histogramme des paiements - {statistiques?.annee || annee}</h3>
+              <h3 className="chart-title">Histogramme des paiements {statistiques?.annee || annee}</h3>
               {statistiques && (
                 <div className="chart-stats-mini">
                   <span className="stat-mini">
@@ -274,7 +274,7 @@ export default function Home() {
                               style={{
                                 height: `${hauteurPourcentage}%`,
                                 background: stat.montant > 0 ?
-                                  "linear-gradient(135deg, #0d9488 0%, #0d9488 100%)" :
+                                  "linear-gradient(135deg, #66dbf2ff 0%, #087096ff 100%)" :
                                   "#e5e7eb"
                               }}
                               title={`${stat.nomMois}: ${formatMontantFR(stat.montant)} (${stat.nombrePaiements} paiements)`}

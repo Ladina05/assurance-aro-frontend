@@ -1184,6 +1184,17 @@ export default function BatchDetails() {
       </div>
 
       <style>{`
+
+      .details-header animate-fadeInDown{
+        padding: 32px 24px;
+        max-width: 1600px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, -10) !important; /* ← Plus transparent */
+        backdrop-filter: blur(8px);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+        
         /* Added keyframe animations for page entrance */
         @keyframes fadeInDown {
           from {

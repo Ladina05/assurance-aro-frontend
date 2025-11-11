@@ -352,7 +352,7 @@ export default function NonLoues() {
         dialogClassName="custom-payment-modal"
         centered
       >
-        <Modal.Header closeButton style={{ background: "#0d9488" }}>
+        <Modal.Header closeButton style={{ background: "linear-gradient(135deg, #22c59fff 0%, #0790bdff 100%)" }}>
           <Modal.Title>Confirmer le paiement</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -403,7 +403,8 @@ export default function NonLoues() {
           <Button variant="outline-secondary" onClick={() => setShowPayConfirm(false)}>
             Annuler
           </Button>
-          <Button variant="success" onClick={handlePayBatch} style={{ background: "#0d9488" }}>
+          <Button variant="success" onClick={handlePayBatch}
+            style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
             Payer
           </Button>
         </Modal.Footer>
@@ -412,7 +413,7 @@ export default function NonLoues() {
       <div className="page-container animate-fadeInUp">
         <div className="page-header">
           <div className="page-header-content">
-            <div className="page-icon" style={{ background: "linear-gradient(135deg, #84cc16 0%, #65a30d 100%)" }}>
+            <div className="page-icon" style={{ background: "linear-gradient(135deg, #0af392ff 0%, #04887fff 100%)" }}>
               <HouseSlashFill size={28} />
             </div>
             <div>
@@ -422,7 +423,9 @@ export default function NonLoues() {
           </div>
           <div className="total-card">
             <div className="total-label">Total à payer</div>
-            <div className="total-amount" style={{ color: "#0d9488" }}>{formatMontant(totalMontant)} Ar</div>
+            <div className="total-amount"
+              style={{ color: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
+              {formatMontant(totalMontant)} Ar</div>
             {/* Sélecteurs pour le mois et l'année de paiement */}
             <div className="paiement-date-selectors">
               <div className="date-selector-group">
@@ -466,7 +469,7 @@ export default function NonLoues() {
               onClick={() => setShowPayConfirm(true)}
               disabled={totalMontant === 0}
               className="mt-2"
-              style={{ background: "#0d9488" }}
+              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)"}}
             >
               <CashStack size={16} className="me-1" />
               Payer
@@ -761,7 +764,8 @@ export default function NonLoues() {
                         <td>
                           <div className="action-buttons">
                             <OverlayTrigger placement="top" overlay={<Tooltip>Ajouter une facture</Tooltip>}>
-                              <Button variant="primary" size="sm" onClick={() => handleShowModal(c)} style={{ background: "#0d9488" }}>
+                              <Button variant="primary" size="sm" onClick={() => handleShowModal(c)}
+                                style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
                                 <PlusCircleFill size={16} />
                               </Button>
                             </OverlayTrigger>
@@ -784,7 +788,7 @@ export default function NonLoues() {
         )}
 
         <Modal show={showModal} onHide={handleCloseModal}>
-          <Modal.Header closeButton style={{ background: "#0d9488" }}>
+          <Modal.Header closeButton style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
             <Modal.Title>Ajouter N° Facture / Montant</Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -828,7 +832,8 @@ export default function NonLoues() {
             <Button variant="outline-secondary" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button variant="primary" onClick={handleSubmit} style={{ background: "#0d9488" }}>
+            <Button variant="primary" onClick={handleSubmit}
+              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
               Valider
             </Button>
           </Modal.Footer>
@@ -840,6 +845,10 @@ export default function NonLoues() {
           padding: 32px 24px;
           max-width: 1600px;
           margin: 0 auto;
+          background: rgba(255, 255, 255, 0.1) !important; /* ← Plus transparent */
+          backdrop-filter: blur(8px);
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {

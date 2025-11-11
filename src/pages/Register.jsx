@@ -83,7 +83,7 @@ export default function Register() {
           <div className="auth-header">
             <div className="auth-logo">
               <div className="logo-circl">
-                <img src="/public/Aro.jpeg" alt="Aro" width={150} height={100} />
+                <img src="/public/Aro.jpeg" alt="Aro" width={140} height={90} />
               </div>
             </div>
             <h2 className="auth-title">Créer un compte</h2>

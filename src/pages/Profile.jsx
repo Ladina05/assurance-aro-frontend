@@ -185,7 +185,9 @@ export default function Profile() {
               </div>
             </div>
 
-            <button className="btn btn-primary btn-lg w-100 mt-2" onClick={() => setShowChangePwd(true)} style={{ background: "#0d9488" }}>
+            <button className="btn btn-primary btn-lg w-100 mt-2" onClick={() => setShowChangePwd(true)}
+              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}
+            >
               <ShieldCheck size={20} /> Changer le mot de passe
             </button>
           </div>
@@ -198,7 +200,7 @@ export default function Profile() {
           </div>
 
           <Modal show={showChangePwd} onHide={() => setShowChangePwd(false)} centered >
-            <Modal.Header closeButton style={{ background: "#0d9488" }}>
+            <Modal.Header closeButton style={{ background: "linear-gradient(135deg, #12c654ff 0%, #0790bdff 100%)" }}>
               <Modal.Title>Changer le mot de passe</Modal.Title>
             </Modal.Header>
             <Modal.Body>
@@ -247,7 +249,7 @@ export default function Profile() {
               <button className="btn btn-secondary" onClick={() => setShowChangePwd(false)}>
                 Annuler
               </button>
-              <button className="btn btn-success" onClick={handleChangePassword} disabled={loadingPwd} style={{ background: "#0d9488" }}>
+              <button className="btn btn-success" onClick={handleChangePassword} disabled={loadingPwd} style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
                 {loadingPwd ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" />

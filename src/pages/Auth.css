@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  background: rgba(255, 255, 255, -10) !important;
   padding: 24px;
 }
 
@@ -51,8 +51,8 @@
 }
 
 .auth-title {
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 25px;
+  font-weight: 700;
   color: #1a1a1a;
   margin-bottom: 8px;
 }

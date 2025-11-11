@@ -1,10 +1,11 @@
 .profile-container {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  overflow: hidden;
+  padding: 32px 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, -10) !important;
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .profile-loading {
@@ -32,10 +33,11 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  margin: 0 auto;
 }
 
 .profile-header {
-  background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
+  background: linear-gradient(135deg, #22c55e 0%, #0790bdff 100%);
   padding: 24px 24px 32px;
   text-align: center;
   color: white;
@@ -123,7 +125,7 @@
 .profile-info-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #0d9488 0%, #0d9488 100%);
+  background: linear-gradient(135deg, #0d9488 0%, #0790bdff 100%);
   border-radius: 10px;
   display: flex;
   align-items: center;

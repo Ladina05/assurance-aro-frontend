@@ -286,7 +286,7 @@ export default function Historique() {
       <div className="page-container">
         <div className="page-header animate-fade-in-down">
           <div className="page-header-content animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-            <div className="page-icon" style={{ background: "linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)" }}>
+            <div className="page-icon" style={{ background: "linear-gradient(135deg, #59ecdbff 0%, #0d9488 100%)" }}>
               <ClockHistory size={28} />
             </div>
             <div>
@@ -670,6 +670,10 @@ export default function Historique() {
           padding: 32px 24px;
           max-width: 1600px;
           margin: 0 auto;
+          background: rgba(255, 255, 255, -10) !important; /* ← Plus transparent */
+          backdrop-filter: blur(8px);
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .page-header {

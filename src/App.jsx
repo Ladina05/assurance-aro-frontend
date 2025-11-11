@@ -68,6 +68,11 @@ export default function App() {
 
   return (
     <div className="app-wrapper">
+      <div className="background-container">
+        <div className="background-image"></div>
+      </div>
+      <div className="background-overlay"></div>
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <ProfilePictureModal
@@ -82,15 +87,11 @@ export default function App() {
           <header className="app-header">
             <div className="header-container">
               <div className="header-brand">
-                <div className="brand-logo">
-                  <img src="/Aro.jpeg" alt="Logo Aro" width={100} height={80} />
-                </div>
-                <br />
+                <img src="/Aro.jpeg" alt="Logo Aro" className="logo-aro" />
                 <div className="brand-text">
                   <h1 className="brand-title">GESTION DES COMPTEURS</h1>
                 </div>
               </div>
-
               <nav className="header-nav">
                 {navItems.map((item) => (
                   <Link
@@ -128,10 +129,6 @@ export default function App() {
                     )}
                   </Link>
                 </div>
-                <Link to="/profile" className="header-profile-link">
-                  <span className="profile-name">{user.name}</span>
-                  <span className="profile-role">{user.role?.toLowerCase()}</span>
-                </Link>
               </div>
             </div>
           </header>
