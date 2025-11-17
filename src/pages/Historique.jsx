@@ -550,7 +550,7 @@ export default function Historique() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Date</th>
+                  <th>Date et Heure</th>
                   <th>Période de paiement</th>
                   <th>Total</th>
                   <th>Chèque</th>

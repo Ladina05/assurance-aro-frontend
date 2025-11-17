@@ -452,15 +452,13 @@ export default function NonLoues() {
 
               <div className="date-selector-group">
                 <label className="date-label">Année de paiement</label>
-                <select
+                <input
+                  type="number"
                   value={anneePaiement}
+                  placeholder="Ex: 2024"
                   onChange={(e) => setAnneePaiement(parseInt(e.target.value))}
                   className="date-select"
-                >
-                  <option value={2023}>2023</option>
-                  <option value={2024}>2024</option>
-                  <option value={2025}>2025</option>
-                </select>
+                />
               </div>
             </div>
             <Button
