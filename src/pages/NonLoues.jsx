@@ -31,6 +31,7 @@ export default function NonLoues() {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
     codeImmeuble: "",
+    codeLocal: "",
     province: "",
     quartier: "",
     nomPropriete: "",
@@ -58,14 +59,16 @@ export default function NonLoues() {
     )
   }
 
-
   async function load() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getCompteurs(false) // Récupère les compteurs non loués
+      const data = await getCompteurs(false); // Récupère les compteurs non loués
+
+      // Vérification et nettoyage des données
       const processedData = data.map((c) => ({
         id: c.id,
         codeImmeuble: c.codeImmeuble || "",
+        codeLocal: c.codeLocal || "",
         nomPropriete: c.nomPropriete || "",
         rg: c.rg || "",
         typeBien: c.typeBien || "",
@@ -74,20 +77,23 @@ export default function NonLoues() {
         quartier: c.quartier || "",
         localisation: c.localisation || "",
         loue: c.loue || false,
-        sousCompteurs:
-          c.sousCompteurs?.map((s) => ({
+        sousCompteurs: Array.isArray(c.sousCompteurs)
+          ? c.sousCompteurs.map((s) => ({
             id: s.id,
             numeroCompteur: s.numeroCompteur || "",
             typeCompteur: s.typeCompteur || "eau",
             numeroFacture: s.numeroFacture || null,
             montant: s.montant || null,
-          })) || [],
-      }))
-      setCompteurs(processedData)
+          }))
+          : [] // Garantir que c'est toujours un tableau
+      }));
+
+      setCompteurs(processedData);
     } catch (err) {
-      addToast(err.message, "error")
+      console.error('Erreur lors du chargement:', err);
+      addToast(err.message, "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -105,7 +111,13 @@ export default function NonLoues() {
 
   const handleSubmit = async () => {
     if (!form.numeroFacture && !form.montant) {
-      addToast("Veuillez remplir au moins N° Facture ou Montant", "warning")
+      addToast("Veuillez remplir tous les champs", "warning")
+      return
+    }
+
+    // Vérifier si on essaie d'ajouter une facture à un compteur sans sous-compteur
+    if (currentCompteur && currentCompteur.sousCompteurs.length === 0) {
+      addToast("Impossible d'ajouter une facture : ce compteur n'a pas de sous-compteur", "error")
       return
     }
 
@@ -179,50 +191,67 @@ export default function NonLoues() {
 
   // Fonction pour regrouper les paiements par numéro de facture (comme dans le PDF)
   const getGroupedPayments = () => {
-    const allPayments = compteurs.flatMap(c =>
-      c.sousCompteurs
-        .filter(s => s.montant && s.montant > 0)
-        .map(s => ({
-          ...s,
-          compteur: {
-            province: c.province,
-            quartier: c.quartier,
-            adresse: c.adresse,
-            rg: c.rg
-          }
-        }))
-    );
-
-    // Regrouper par numeroFacture comme dans le PDF
-    const groupedPayments = Object.values(
-      allPayments.reduce((acc, p) => {
-        const key = p.numeroFacture || `nofacture-${p.id}`;
-        if (!acc[key]) {
-          acc[key] = {
-            ...p,
-            typeCompteur: [p.typeCompteur],
-            numeroCompteur: [p.numeroCompteur],
-            montant: p.montant || 0,
-            province: p.compteur.province,
-            quartier: p.compteur.quartier,
-            adresse: p.compteur.adresse,
-            rg: p.compteur.rg
-          };
-        } else {
-          acc[key].typeCompteur.push(p.typeCompteur);
-          acc[key].numeroCompteur.push(p.numeroCompteur);
-          acc[key].montant += p.montant || 0;
+    try {
+      const allPayments = compteurs.flatMap(c => {
+        // Vérifier que c.sousCompteurs existe et est un tableau
+        if (!c.sousCompteurs || !Array.isArray(c.sousCompteurs)) {
+          return [];
         }
-        return acc;
-      }, {})
-    );
 
-    // Trier par quartier comme dans le PDF
-    return groupedPayments.sort((a, b) => {
-      const q1 = a.quartier?.toLowerCase() || '';
-      const q2 = b.quartier?.toLowerCase() || '';
-      return q1.localeCompare(q2);
-    });
+        return c.sousCompteurs
+          .filter(s => s && typeof s.montant === 'number' && s.montant > 0)
+          .map(s => ({
+            ...s,
+            compteur: {
+              province: c.province || 'N/A',
+              quartier: c.quartier || 'N/A',
+              adresse: c.adresse || '-',
+              rg: c.rg || '-'
+            }
+          }));
+      });
+
+      // Si aucun paiement, retourner un tableau vide
+      if (allPayments.length === 0) {
+        return [];
+      }
+
+      // Regrouper par numeroFacture comme dans le PDF
+      const groupedPayments = Object.values(
+        allPayments.reduce((acc, p) => {
+          if (!p || !p.id) return acc; // Éviter les éléments undefined ou sans ID
+
+          const key = p.numeroFacture || `nofacture-${p.id}`;
+          if (!acc[key]) {
+            acc[key] = {
+              ...p,
+              typeCompteur: [p.typeCompteur || 'eau'],
+              numeroCompteur: [p.numeroCompteur || ''],
+              montant: p.montant || 0,
+              province: p.compteur?.province || 'N/A',
+              quartier: p.compteur?.quartier || 'N/A',
+              adresse: p.compteur?.adresse || '-',
+              rg: p.compteur?.rg || '-'
+            };
+          } else {
+            acc[key].typeCompteur.push(p.typeCompteur || 'eau');
+            acc[key].numeroCompteur.push(p.numeroCompteur || '');
+            acc[key].montant += p.montant || 0;
+          }
+          return acc;
+        }, {})
+      );
+
+      // Trier par quartier comme dans le PDF
+      return groupedPayments.sort((a, b) => {
+        const q1 = a.quartier?.toLowerCase() || '';
+        const q2 = b.quartier?.toLowerCase() || '';
+        return q1.localeCompare(q2);
+      });
+    } catch (error) {
+      console.error('Erreur dans getGroupedPayments:', error);
+      return [];
+    }
   };
 
   const getNomMois = (mois) => {
@@ -234,8 +263,12 @@ export default function NonLoues() {
   }
 
   const handleDeleteClick = (sousCompteur) => {
-    setItemToDelete(sousCompteur)
-    setShowDeleteConfirm(true)
+    if (!sousCompteur || !sousCompteur.id) {
+      addToast("Impossible de supprimer : sous-compteur invalide", "error");
+      return;
+    }
+    setItemToDelete(sousCompteur);
+    setShowDeleteConfirm(true);
   }
 
   const handleDelete = async () => {
@@ -277,6 +310,7 @@ export default function NonLoues() {
   const clearAllFilters = () => {
     setFilters({
       codeImmeuble: "",
+      codeLocal: "",
       province: "",
       quartier: "",
       nomPropriete: "",
@@ -297,6 +331,7 @@ export default function NonLoues() {
       const text = searchText.toLowerCase()
       const mainFields = [
         c.codeImmeuble,
+        c.codeLocal,
         c.nomPropriete,
         c.rg,
         c.typeBien,
@@ -312,6 +347,7 @@ export default function NonLoues() {
       // Filtres individuels
       const individualFiltersMatch =
         (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
+        (filters.codeLocal === "" || c.codeLocal?.toLowerCase().includes(filters.codeLocal.toLowerCase())) &&
         (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
         (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
         (filters.nomPropriete === "" || c.nomPropriete?.toLowerCase().includes(filters.nomPropriete.toLowerCase())) &&
@@ -467,7 +503,7 @@ export default function NonLoues() {
               onClick={() => setShowPayConfirm(true)}
               disabled={totalMontant === 0}
               className="mt-2"
-              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)"}}
+              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}
             >
               <CashStack size={16} className="me-1" />
               Payer
@@ -532,6 +568,17 @@ export default function NonLoues() {
               </div>
 
               <div className="filter-group">
+                <label className="filter-label">Code Local</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par code..."
+                  value={filters.codeLocal}
+                  onChange={(e) => handleFilterChange('codeImmeuble', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
                 <label className="filter-label">Province</label>
                 <input
                   type="text"
@@ -589,17 +636,6 @@ export default function NonLoues() {
               </div>
 
               <div className="filter-group">
-                <label className="filter-label">Adresse</label>
-                <input
-                  type="text"
-                  placeholder="Filtrer par adresse..."
-                  value={filters.adresse}
-                  onChange={(e) => handleFilterChange('adresse', e.target.value)}
-                  className="filter-input"
-                />
-              </div>
-
-              <div className="filter-group">
                 <label className="filter-label">Localisation</label>
                 <input
                   type="text"
@@ -653,16 +689,14 @@ export default function NonLoues() {
           </div>
         ) : (
           <div className="table-wrapper">
-            <table className="table">
+            <table className="table main-table">
               <thead>
                 <tr>
                   <th>Code Immeuble</th>
-                  <th>Province</th>
+                  <th>Code Local</th>
                   <th>Quartier</th>
                   <th>Propriété</th>
                   <th>RG</th>
-                  <th>Type Bien</th>
-                  <th>Adresse</th>
                   <th>Localisation</th>
                   <th>N° Compteur</th>
                   <th>N° Facture</th>
@@ -670,7 +704,7 @@ export default function NonLoues() {
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="table-body-scroll">
                 {filteredCompteurs.length === 0 ? (
                   <tr>
                     <td colSpan="12" className="text-center py-5">
@@ -695,48 +729,57 @@ export default function NonLoues() {
                 ) : (
                   filteredCompteurs.map((c) => {
                     // Vérifie si "tous" a été utilisé : tous les sousCompteurs ont le même numeroFacture et montant
-                    const isTous = c.sousCompteurs.every(
-                      (sc) =>
-                        sc.numeroFacture === c.sousCompteurs[0].numeroFacture
+                    // CORRECTION : Vérifier d'abord qu'il y a des sous-compteurs
+                    const hasSousCompteurs = c.sousCompteurs && c.sousCompteurs.length > 0;
+
+                    const isTous = hasSousCompteurs && c.sousCompteurs.every(
+                      (sc, index, array) =>
+                        sc.numeroFacture === array[0].numeroFacture
                     )
 
                     // Somme totale des montants pour le cas "tous"
-                    const totalMontantTous = c.sousCompteurs.reduce(
+                    const totalMontantTous = hasSousCompteurs ? c.sousCompteurs.reduce(
                       (sum, sc) => sum + (typeof sc.montant === "number" ? sc.montant : 0),
                       0
-                    )
+                    ) : 0;
 
                     return (
                       <tr key={c.id}>
                         <td><strong>{c.codeImmeuble}</strong></td>
-                        <td>{c.province}</td>
+                        <td><strong>{c.codeLocal}</strong></td>
                         <td>{c.quartier}</td>
                         <td>{c.nomPropriete}</td>
                         <td>{c.rg}</td>
-                        <td><span className={`badge-type ${c.typeBien}`}>{c.typeBien}</span></td>
-                        <td>{c.adresse}</td>
                         <td>{c.localisation}</td>
 
                         {/* N° Compteur */}
                         <td>
                           <div className="compteurs-list">
-                            {c.sousCompteurs.map((sc, idx) => (
-                              <div key={idx} className="compteur-line">
-                                {sc.numeroCompteur} ({sc.typeCompteur})
-                              </div>
-                            ))}
+                            {hasSousCompteurs ? (
+                              c.sousCompteurs.map((sc, idx) => (
+                                <div key={idx} className="compteur-line">
+                                  {sc.numeroCompteur} ({sc.typeCompteur})
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-muted">Aucun numéro de compteur</span>
+                            )}
                           </div>
                         </td>
 
                         {/* N° Facture */}
                         <td>
                           <div className="compteurs-list">
-                            {isTous ? (
-                              <div style={{ textAlign: 'center' }}>{c.sousCompteurs[0].numeroFacture || "-"}</div>
+                            {hasSousCompteurs ? (
+                              isTous ? (
+                                <div style={{ textAlign: 'center' }}>{c.sousCompteurs[0]?.numeroFacture || "-"}</div>
+                              ) : (
+                                c.sousCompteurs.map((sc, idx) => (
+                                  <div key={idx} className="compteur-line">{sc.numeroFacture || "-"}</div>
+                                ))
+                              )
                             ) : (
-                              c.sousCompteurs.map((sc, idx) => (
-                                <div key={idx} className="compteur-line">{sc.numeroFacture || "-"}</div>
-                              ))
+                              <span className="text-muted">-</span>
                             )}
                           </div>
                         </td>
@@ -744,16 +787,20 @@ export default function NonLoues() {
                         {/* Montant */}
                         <td>
                           <div className="compteurs-list">
-                            {isTous ? (
-                              <div style={{ textAlign: 'center' }}>
-                                <strong className="text-success" style={{ color: "#0d9488" }}>{formatMontant(totalMontantTous)}</strong>
-                              </div>
-                            ) : (
-                              c.sousCompteurs.map((sc, idx) => (
-                                <div key={idx} className="compteur-line">
-                                  <strong className="text-success" style={{ color: "#0d9488" }}>{sc.montant != null ? formatMontant(sc.montant) : "-"}</strong>
+                            {hasSousCompteurs ? (
+                              isTous ? (
+                                <div style={{ textAlign: 'center' }}>
+                                  <strong className="text-success" style={{ color: "#0d9488" }}>{formatMontant(totalMontantTous)}</strong>
                                 </div>
-                              ))
+                              ) : (
+                                c.sousCompteurs.map((sc, idx) => (
+                                  <div key={idx} className="compteur-line">
+                                    <strong className="text-success" style={{ color: "#0d9488" }}>{sc.montant != null ? formatMontant(sc.montant) : "-"}</strong>
+                                  </div>
+                                ))
+                              )
+                            ) : (
+                              <span className="text-muted">-</span>
                             )}
                           </div>
                         </td>
@@ -762,12 +809,17 @@ export default function NonLoues() {
                         <td>
                           <div className="action-buttons">
                             <OverlayTrigger placement="top" overlay={<Tooltip>Ajouter une facture</Tooltip>}>
-                              <Button variant="primary" size="sm" onClick={() => handleShowModal(c)}
-                                style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleShowModal(c)}
+                                style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}
+                                disabled={!hasSousCompteurs} // Désactiver si pas de sous-compteurs
+                              >
                                 <PlusCircleFill size={16} />
                               </Button>
                             </OverlayTrigger>
-                            {c.sousCompteurs.some((sc) => sc.numeroFacture || sc.montant) && (
+                            {hasSousCompteurs && c.sousCompteurs.some((sc) => sc.numeroFacture || sc.montant) && (
                               <OverlayTrigger placement="top" overlay={<Tooltip>Supprimer toutes les factures</Tooltip>}>
                                 <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c.sousCompteurs[0])}>
                                   <TrashFill size={16} />
@@ -1019,12 +1071,43 @@ export default function NonLoues() {
           overflow: hidden;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           overflow-x: auto;
+          max-height: 600px; /* Hauteur maximale pour le wrapper */
+          display: flex;
+          flex-direction: column;
         }
 
-        .table {
+        .main-table {
           margin: 0;
           min-width: 1400px;
           text-align: center;
+          border-collapse: collapse;
+        }
+
+        .main-table thead {
+          position: sticky;
+          top: 0;
+          background: white;
+          z-index: 10;
+          box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-body-scroll {
+          display: block;
+          max-height: 500px; /* Hauteur de défilement pour le tbody */
+          overflow-y: auto;
+          overflow-x: hidden;
+        }
+
+        .main-table tbody tr {
+          display: table;
+          width: 100%;
+          table-layout: fixed;
+        }
+
+        .main-table thead tr {
+          display: table;
+          width: 100%;
+          table-layout: fixed;
         }
 
         th, td {
@@ -1157,6 +1240,12 @@ export default function NonLoues() {
           box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.1);
         }
 
+        .text-muted {
+          color: #6b7280 !important;
+          font-style: italic;
+          font-size: 12px;
+        }
+
         @media (max-width: 768px) {
           .page-container {
             padding: 24px 16px;
@@ -1199,6 +1288,15 @@ export default function NonLoues() {
           .filters-header {
             flex-direction: column;
             align-items: flex-start;
+          }
+
+          /* Ajustements pour le défilement sur mobile */
+          .table-body-scroll {
+            max-height: 400px;
+          }
+
+          .table-wrapper {
+            max-height: 500px;
           }
 
           /* Modal personnalisé pour le paiement */

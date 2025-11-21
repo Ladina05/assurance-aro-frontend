@@ -36,6 +36,7 @@ export default function AllCompteurs() {
   // États pour les filtres individuels
   const [filters, setFilters] = useState({
     codeImmeuble: "",
+    codeLocal: "",
     province: "",
     quartier: "",
     nomPropriete: "",
@@ -49,6 +50,7 @@ export default function AllCompteurs() {
 
   const [form, setForm] = useState({
     codeImmeuble: "",
+    codeLocal: "",
     nomPropriete: "",
     rg: "",
     typeBien: "",
@@ -83,6 +85,7 @@ export default function AllCompteurs() {
       // Mode modification
       setForm({
         codeImmeuble: compteur.codeImmeuble || "",
+        codeLocal: compteur.codeLocal || "",
         nomPropriete: compteur.nomPropriete || "",
         rg: compteur.rg || "",
         typeBien: compteur.typeBien || "",
@@ -101,6 +104,7 @@ export default function AllCompteurs() {
       // Mode ajout
       setForm({
         codeImmeuble: "",
+        codeLocal: "",
         nomPropriete: "",
         rg: "",
         typeBien: "",
@@ -147,31 +151,39 @@ export default function AllCompteurs() {
   };
 
   const handleSubmit = async () => {
-    // Vérification des champs principaux
+    // Vérification des champs principaux (sans les sous-compteurs)
     if (
-      !form.codeImmeuble ||
       !form.nomPropriete ||
       !form.rg ||
       !form.typeBien ||
       !form.province ||
-      !form.adresse ||
       !form.quartier ||
-      !form.localisation ||
-      form.sousCompteurs.some(
-        (sc) => !sc.numeroCompteur || !sc.typeCompteur
-      )
+      !form.localisation
     ) {
-      setError("Tous les champs et tous les numéros de compteur sont obligatoires.");
+      setError("Tous les champs principaux sont obligatoires.");
+      return;
+    }
+
+    // Vérifier que si des sous-compteurs sont ajoutés, ils sont complets
+    const hasIncompleteSousCompteurs = form.sousCompteurs.some(
+      (sc) => (sc.numeroCompteur && !sc.typeCompteur) || (!sc.numeroCompteur && sc.typeCompteur)
+    );
+
+    if (hasIncompleteSousCompteurs) {
+      setError("Si vous ajoutez un sous-compteur, le numéro et le type sont obligatoires.");
       return;
     }
 
     try {
       const payload = {
         ...form,
-        sousCompteurs: form.sousCompteurs.map((sc) => ({
-          numeroCompteur: sc.numeroCompteur,
-          typeCompteur: sc.typeCompteur,
-        })),
+        // N'envoyer que les sous-compteurs qui ont un numéro
+        sousCompteurs: form.sousCompteurs
+          .filter(sc => sc.numeroCompteur && sc.typeCompteur)
+          .map((sc) => ({
+            numeroCompteur: sc.numeroCompteur,
+            typeCompteur: sc.typeCompteur,
+          })),
       };
 
       if (editingCompteur) {
@@ -218,6 +230,7 @@ export default function AllCompteurs() {
   const clearAllFilters = () => {
     setFilters({
       codeImmeuble: "",
+      codeLocal: "",
       province: "",
       quartier: "",
       nomPropriete: "",
@@ -237,6 +250,7 @@ export default function AllCompteurs() {
       const text = searchText.toLowerCase()
       const mainFields = [
         c.codeImmeuble,
+        c.codeLocal,
         c.nomPropriete,
         c.rg,
         c.typeBien,
@@ -253,6 +267,7 @@ export default function AllCompteurs() {
       // Filtres individuels
       const individualFiltersMatch =
         (filters.codeImmeuble === "" || c.codeImmeuble?.toLowerCase().includes(filters.codeImmeuble.toLowerCase())) &&
+        (filters.codeLocal === "" || c.codeLocal?.toLowerCase().includes(filters.codeLocal.toLowerCase())) &&
         (filters.province === "" || c.province?.toLowerCase().includes(filters.province.toLowerCase())) &&
         (filters.quartier === "" || c.quartier?.toLowerCase().includes(filters.quartier.toLowerCase())) &&
         (filters.nomPropriete === "" || c.nomPropriete?.toLowerCase().includes(filters.nomPropriete.toLowerCase())) &&
@@ -291,19 +306,19 @@ export default function AllCompteurs() {
       doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} - ${filteredCompteurs.length} compteurs`, 148.5, 22, { align: 'center' })
 
       // En-têtes du tableau avec largeurs ajustées
-      const headers = ['Code', 'Province', 'Quartier', 'Propriété', 'RG', 'Type', 'Adresse', 'Localisation', 'Statut']
-      const columnWidths = [30, 30, 30, 30, 30, 30, 35, 30, 30]
+      const headers = ['Code Immeuble', 'Code Local', 'Province', 'Quartier', 'Propriété', 'RG', 'Type', 'Adresse', 'Localisation', 'Statut']
+      const columnWidths = [30, 30, 25, 25, 35, 25, 30, 45, 25, 20]
       let yPosition = 35
 
       // Dessiner les en-têtes (sans couleur de fond, juste en gras)
       doc.setTextColor(0, 0, 0) // Noir
       doc.setFont(undefined, 'bold')
-      doc.setFontSize(9)
+      doc.setFontSize(10)
 
-      let xPosition = 10
+      let xPosition = 3
       headers.forEach((header, index) => {
         // Dessiner uniquement la bordure, pas de fond coloré
-        doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
+        doc.rect(xPosition, yPosition - 9, columnWidths[index], 9, 'S')
 
         // Centrer le texte dans la cellule
         const textWidth = doc.getTextWidth(header)
@@ -317,7 +332,7 @@ export default function AllCompteurs() {
       doc.setFontSize(8) // Taille de police plus petite
 
       filteredCompteurs.forEach((compteur, rowIndex) => {
-        yPosition += 8
+        yPosition += 9
 
         // Vérifier si on besoin d'une nouvelle page
         if (yPosition > 190) { // A4 paysage hauteur = 210mm
@@ -327,11 +342,11 @@ export default function AllCompteurs() {
           // Redessiner les en-têtes sur la nouvelle page
           doc.setTextColor(0, 0, 0)
           doc.setFont(undefined, 'bold')
-          doc.setFontSize(9)
+          doc.setFontSize(10)
 
-          xPosition = 10
+          xPosition = 11
           headers.forEach((header, index) => {
-            doc.rect(xPosition, yPosition - 8, columnWidths[index], 8, 'S')
+            doc.rect(xPosition, yPosition - 9, columnWidths[index], 9, 'S')
             const textWidth = doc.getTextWidth(header)
             const textX = xPosition + (columnWidths[index] - textWidth) / 2
             doc.text(header, textX, yPosition - 2)
@@ -339,14 +354,15 @@ export default function AllCompteurs() {
           })
 
           doc.setFont(undefined, 'normal')
-          doc.setFontSize(8)
-          yPosition += 8
+          doc.setFontSize(9)
+          yPosition += 9
         }
 
-        xPosition = 10
+        xPosition = 3
 
         const rowData = [
           compteur.codeImmeuble || '-',
+          compteur.codeLocal || '-',
           compteur.province || '-',
           compteur.quartier || '-',
           compteur.nomPropriete || '-',
@@ -365,7 +381,7 @@ export default function AllCompteurs() {
             displayText = data.substring(0, 17) + '...'
           }
 
-          doc.rect(xPosition, yPosition - 8, columnWidths[colIndex], 8, 'S')
+          doc.rect(xPosition, yPosition - 9, columnWidths[colIndex], 9, 'S')
 
           // TOUS LES TEXTES CENTRÉS
           const textWidth = doc.getTextWidth(displayText)
@@ -391,6 +407,7 @@ export default function AllCompteurs() {
     // Définir les en-têtes
     worksheet.columns = [
       { header: 'Code Immeuble', key: 'codeImmeuble', width: 15 },
+      { header: 'Code Local', key: 'codeLocal', width: 15 },
       { header: 'Province', key: 'province', width: 12 },
       { header: 'Quartier', key: 'quartier', width: 15 },
       { header: 'Propriété', key: 'nomPropriete', width: 15 },
@@ -405,6 +422,7 @@ export default function AllCompteurs() {
     // Ajouter les données
     const data = filteredCompteurs.map(c => ({
       codeImmeuble: c.codeImmeuble || '',
+      codeLocal: c.codeLocal || '',
       province: c.province || '',
       quartier: c.quartier || '',
       nomPropriete: c.nomPropriete || '',
@@ -562,6 +580,17 @@ export default function AllCompteurs() {
               </div>
 
               <div className="filter-group">
+                <label className="filter-label">Code Local</label>
+                <input
+                  type="text"
+                  placeholder="Filtrer par code..."
+                  value={filters.codeLocal}
+                  onChange={(e) => handleFilterChange('codeLocal', e.target.value)}
+                  className="filter-input"
+                />
+              </div>
+
+              <div className="filter-group">
                 <label className="filter-label">Province</label>
                 <input
                   type="text"
@@ -678,6 +707,7 @@ export default function AllCompteurs() {
               <thead>
                 <tr>
                   <th>Code Immeuble</th>
+                  <th>Code Local</th>
                   <th>Province</th>
                   <th>Quartier</th>
                   <th>Propriété</th>
@@ -690,7 +720,7 @@ export default function AllCompteurs() {
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="scrollable-tbody">
                 {filteredCompteurs.length === 0 ? (
                   <tr>
                     <td colSpan="11" className="text-center py-5">
@@ -718,6 +748,9 @@ export default function AllCompteurs() {
                       <td>
                         <strong>{c.codeImmeuble}</strong>
                       </td>
+                      <td>
+                        <strong>{c.codeLocal}</strong>
+                      </td>
                       <td>{c.province}</td>
                       <td>{c.quartier}</td>
                       <td>{c.nomPropriete}</td>
@@ -729,12 +762,16 @@ export default function AllCompteurs() {
                       <td>{c.localisation}</td>
                       <td>
                         <div className="compteurs-list">
-                          {c.sousCompteurs?.map((sc) => (
-                            <div key={sc.id} className="d-flex align-items-center mb-1">
-                              <span className="compteur-badge me-2">{sc.numeroCompteur}</span>
-                              <span className={`badge-type ${sc.typeCompteur}`}>{sc.typeCompteur}</span>
-                            </div>
-                          ))}
+                          {c.sousCompteurs && c.sousCompteurs.length > 0 ? (
+                            c.sousCompteurs.map((sc) => (
+                              <div key={sc.id} className="d-flex align-items-center mb-1">
+                                <span className="compteur-badge me-2">{sc.numeroCompteur}</span>
+                                <span className={`badge-type ${sc.typeCompteur}`}>{sc.typeCompteur}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-muted">Aucun numéro de compteur</span>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -778,6 +815,15 @@ export default function AllCompteurs() {
                     <Form.Control
                       value={form.codeImmeuble}
                       onChange={(e) => setForm({ ...form, codeImmeuble: e.target.value })}
+                    />
+                  </Form.Group>
+                </div>
+                <div className="col-md-6">
+                  <Form.Group className="mb-3">
+                    <Form.Label>Code Immeuble *</Form.Label>
+                    <Form.Control
+                      value={form.codeLocal}
+                      onChange={(e) => setForm({ ...form, codeLocal: e.target.value })}
                     />
                   </Form.Group>
                 </div>
@@ -920,26 +966,78 @@ export default function AllCompteurs() {
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     overflow-x: auto;
-    background: rgba(255, 255, 255, 0.1) !important; /* ← Plus transparent */
+    background: rgba(255, 255, 255, 0.1) !important;
     backdrop-filter: blur(3px);
+    /* Hauteur augmentée */
+    height: 700px;
+    display: flex;
+    flex-direction: column;
   }
 
   .advanced-filters {
-    background: rgba(255, 255, 255, 0.1) !important; /* ← Plus transparent */
+    background: rgba(255, 255, 255, 0.1) !important;
     backdrop-filter: blur(5px);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(229, 231, 235, 0.8); /* ← Bordure semi-transparente */
+    border: 1px solid rgba(229, 231, 235, 0.8);
   }
 
+  /* Styles pour le tableau avec défilement */
+  .table {
+    margin: 0;
+    min-width: 1200px;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    table-layout: fixed;
+  }
+
+  thead {
+    flex-shrink: 0;
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  tbody.scrollable-tbody {
+    flex: 1;
+    overflow-y: auto;
+    display: block;
+  }
+
+  tbody.scrollable-tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  /* Largeurs des colonnes pour éviter le débordement */
+  th:nth-child(1), td:nth-child(1) { width: 130px; } /* Code Immeuble */
+  th:nth-child(2), td:nth-child(2) { width: 110px; }  /* Province */
+  th:nth-child(3), td:nth-child(3) { width: 115px; } /* Quartier */
+  th:nth-child(4), td:nth-child(4) { width: 120px; } /* Propriété */
+  th:nth-child(5), td:nth-child(5) { width: 120px; }  /* RG */
+  th:nth-child(6), td:nth-child(6) { width: 100px; } /* Type Bien */
+  th:nth-child(7), td:nth-child(7) { width: 150px; } /* Adresse */
+  th:nth-child(8), td:nth-child(8) { width: 125px; } /* Localisation */
+  th:nth-child(9), td:nth-child(9) { width: 180px; } /* Compteurs - Largeur augmentée */
+  th:nth-child(10), td:nth-child(10) { width: 80px; } /* Loué */
+  th:nth-child(11), td:nth-child(11) { width: 95px; } /* Actions */
+
   th {
-    background-color:linear-gradient(135deg, #59edd9ff 0%, #089683ff 100%) !important;
+    background: linear-gradient(135deg, #cacccbff 0%, #999b9bff 100%) !important;
     padding: 12px 8px;
     border: 1px solid rgba(221, 221, 221, 0.4);
     font-weight: 600;
     color: #1a1a1a;
+    position: sticky;
+    top: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   td {
@@ -947,6 +1045,79 @@ export default function AllCompteurs() {
     padding: 10px 8px;
     border: 1px solid rgba(221, 221, 221, 0.3);
     color: #374151;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow: hidden;
+  }
+
+  /* Correction spécifique pour la colonne Compteurs */
+  td:nth-child(9) {
+    max-width: 180px;
+    min-width: 180px;
+  }
+
+  .compteurs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
+  .compteurs-list::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .compteurs-list::-webkit-scrollbar-thumb {
+    background: rgba(22, 163, 74, 0.5);
+    border-radius: 2px;
+  }
+
+  .compteur-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    font-size: 11px;
+  }
+
+  .compteur-number {
+    font-weight: 600;
+    color: #166534;
+    flex-shrink: 0;
+  }
+
+  .compteur-type {
+    flex-shrink: 0;
+  }
+
+  /* Personnalisation de la barre de défilement principale */
+  .scrollable-tbody::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .scrollable-tbody::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  .scrollable-tbody::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #22c55e 0%, #0790bdff 100%);
+    border-radius: 4px;
+  }
+
+  .scrollable-tbody::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #0284c7 100%);
+  }
+
+  /* Pour Firefox */
+  .scrollable-tbody {
+    scrollbar-width: thin;
+    scrollbar-color: #22c55e rgba(0, 0, 0, 0.1);
   }
 
   /* Effet de survol pour mieux voir les lignes */
@@ -956,11 +1127,10 @@ export default function AllCompteurs() {
   }
 
   .search-input, .filter-input {
-    background: rgba(255, 255, 255, 0.9) !important; /* ← Champs de recherche transparents */
+    background: rgba(255, 255, 255, 0.9) !important;
     backdrop-filter: blur(3px);
   }
 
-  /* Le reste de vos styles existants... */
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -1004,6 +1174,13 @@ export default function AllCompteurs() {
   .btn-add {
     color: white;
     background: linear-gradient(135deg, #22c55e 0%, #0790bdff 100%);
+    border: none;
+  }
+
+  .btn-add:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #0284c7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
 
   .search-bar {
@@ -1026,6 +1203,7 @@ export default function AllCompteurs() {
     border-radius: 12px;
     font-size: 15px;
     transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.9) !important;
   }
 
   .search-input:focus {
@@ -1065,12 +1243,25 @@ export default function AllCompteurs() {
     display: flex;
     align-items: center;
     gap: 8px;
+    border: 1px solid #d1d5db;
+  }
+
+  .filter-toggle-btn:hover {
+    background-color: #f9fafb;
+    border-color: #9ca3af;
   }
 
   .clear-filters-btn {
     display: flex;
     align-items: center;
     gap: 6px;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+  }
+
+  .clear-filters-btn:hover {
+    background-color: #fef2f2;
+    border-color: #dc2626;
   }
 
   .filters-grid {
@@ -1099,6 +1290,7 @@ export default function AllCompteurs() {
     border-radius: 8px;
     font-size: 14px;
     transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.9) !important;
   }
 
   .filter-input:focus {
@@ -1121,14 +1313,9 @@ export default function AllCompteurs() {
     font-size: 15px;
   }
 
-  .table {
-    margin: 0;
-    min-width: 1200px;
-    text-align: center;
-  }
-
   .empty-state {
     padding: 40px;
+    text-align: center;
   }
 
   .badge-id {
@@ -1141,11 +1328,13 @@ export default function AllCompteurs() {
   }
 
   .badge-type {
-    padding: 4px 12px;
+    padding: 4px 8px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: capitalize;
+    display: inline-block;
+    white-space: nowrap;
   }
 
   .badge-type.placement {
@@ -1168,26 +1357,23 @@ export default function AllCompteurs() {
     color: #431c04ff;
   }
 
-  .compteurs-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
   .compteur-badge {
     background: #dcfce7;
     color: #166534;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
     font-weight: 600;
+    white-space: nowrap;
   }
 
   .badge-status {
-    padding: 4px 12px;
+    padding: 4px 8px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
   }
 
   .badge-status.loue {
@@ -1202,7 +1388,36 @@ export default function AllCompteurs() {
 
   .action-buttons {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .action-buttons .btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 12px;
+  }
+
+  .action-buttons .btn-warning {
+    background-color: #f59e0b;
+    color: white;
+  }
+
+  .action-buttons .btn-warning:hover {
+    background-color: #d97706;
+    transform: translateY(-1px);
+  }
+
+  .action-buttons .btn-danger {
+    background-color: #ef4444;
+    color: white;
+  }
+
+  .action-buttons .btn-danger:hover {
+    background-color: #dc2626;
+    transform: translateY(-1px);
   }
 
   .custom-tooltip {
@@ -1221,6 +1436,52 @@ export default function AllCompteurs() {
 
   .custom-tooltip.bs-tooltip-top .tooltip-arrow::before {
     border-top-color: #1f2937 !important;
+  }
+
+  .text-muted {
+    color: #6b7280 !important;
+    font-style: italic;
+    font-size: 12px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .header-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .header-actions .btn-outline-success {
+    border: 1px solid #16a34a;
+    color: #16a34a;
+  }
+
+  .header-actions .btn-outline-success:hover {
+    background-color: #16a34a;
+    color: white;
+    transform: translateY(-1px);
+  }
+
+  .header-actions .btn-outline-danger {
+    border: 1px solid #dc2626;
+    color: #dc2626;
+  }
+
+  .header-actions .btn-outline-danger:hover {
+    background-color: #dc2626;
+    color: white;
+    transform: translateY(-1px);
   }
 
   @media (max-width: 768px) {
@@ -1252,6 +1513,7 @@ export default function AllCompteurs() {
 
     .table-wrapper {
       border-radius: 8px;
+      height: 600px;
     }
 
     .filters-grid {
@@ -1264,9 +1526,53 @@ export default function AllCompteurs() {
     }
 
     .header-actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .header-actions .btn {
+      flex: 1;
+      justify-content: center;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .action-buttons .btn {
+      width: 100%;
+    }
+
+    /* Ajustements des largeurs de colonnes pour mobile */
+    th:nth-child(1), td:nth-child(1) { width: 80px; }
+    th:nth-child(2), td:nth-child(2) { width: 70px; }
+    th:nth-child(3), td:nth-child(3) { width: 80px; }
+    th:nth-child(4), td:nth-child(4) { width: 100px; }
+    th:nth-child(5), td:nth-child(5) { width: 60px; }
+    th:nth-child(6), td:nth-child(6) { width: 80px; }
+    th:nth-child(7), td:nth-child(7) { width: 120px; }
+    th:nth-child(8), td:nth-child(8) { width: 100px; }
+    th:nth-child(9), td:nth-child(9) { width: 150px; }
+    th:nth-child(10), td:nth-child(10) { width: 60px; }
+    th:nth-child(11), td:nth-child(11) { width: 100px; }
+  }
+
+  @media (max-width: 480px) {
+    .table-wrapper {
+      height: 500px;
+    }
+    
+    .page-container {
+      padding: 16px 12px;
+    }
+    
+    .header-actions {
+      flex-direction: column;
+    }
+    
+    .header-actions .btn {
+      width: 100%;
     }
   }
 `}</style>

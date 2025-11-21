@@ -277,7 +277,7 @@ export default function Historique() {
         onHide={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeleteConfirm}
         title="Supprimer l'historique"
-        message={`Êtes-vous sûr de vouloir supprimer l'historique du paiement #${batchToDelete?.id} ? Cette action est irréversible.`}
+        message={`Êtes-vous sûr de vouloir supprimer l'historique de ce paiement? Cette action est irréversible.`}
         confirmText="Supprimer"
         cancelText="Annuler"
         variant="danger"
