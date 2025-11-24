@@ -1,8 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getCompteurs, updateSousCompteur, payBatch } from "../services/api"
-import { Modal, Button, Form, OverlayTrigger, Tooltip } from "react-bootstrap"
+import {
+  getCompteurs,
+  updateSousCompteur,
+  payBatch,
+  createFacture,
+  deleteFacture
+} from "../services/api"
+import { Modal, Button, Form, OverlayTrigger, Tooltip, } from "react-bootstrap"
 import {
   HouseSlashFill,
   Search,
@@ -10,7 +16,8 @@ import {
   PlusCircleFill,
   TrashFill,
   CashStack,
-  Filter
+  Filter,
+  EyeFill
 } from "react-bootstrap-icons"
 import ConfirmDialog from "../components/ConfirmDialog"
 import { useToast } from "../hooks/useToast"
@@ -22,7 +29,13 @@ export default function NonLoues() {
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [currentCompteur, setCurrentCompteur] = useState(null)
-  const [form, setForm] = useState({ numeroFacture: "", montant: "", selectedCompteur: "tous" })
+  const [form, setForm] = useState({
+    numeroFacture: "",
+    montant: "",
+    selectedCompteur: "tous",
+    mois: (new Date().getMonth() + 1).toString(), // Convertir en string pour le select
+    annee: new Date().getFullYear().toString() // Convertir en string pour l'input
+  });
   const [searchText, setSearchText] = useState("")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPayConfirm, setShowPayConfirm] = useState(false)
@@ -43,6 +56,8 @@ export default function NonLoues() {
     numeroFacture: "",
     montant: ""
   })
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [compteurDetail, setCompteurDetail] = useState(null);
 
   const [moisPaiement, setMoisPaiement] = useState(new Date().getMonth() + 1)
   const [anneePaiement, setAnneePaiement] = useState(new Date().getFullYear())
@@ -62,9 +77,8 @@ export default function NonLoues() {
   async function load() {
     setLoading(true);
     try {
-      const data = await getCompteurs(false); // Récupère les compteurs non loués
+      const data = await getCompteurs(false);
 
-      // Vérification et nettoyage des données
       const processedData = data.map((c) => ({
         id: c.id,
         codeImmeuble: c.codeImmeuble || "",
@@ -84,8 +98,9 @@ export default function NonLoues() {
             typeCompteur: s.typeCompteur || "eau",
             numeroFacture: s.numeroFacture || null,
             montant: s.montant || null,
+            factures: s.factures || [] // S'assurer que factures existe
           }))
-          : [] // Garantir que c'est toujours un tableau
+          : []
       }));
 
       setCompteurs(processedData);
@@ -103,77 +118,131 @@ export default function NonLoues() {
 
   const handleShowModal = (compteur) => {
     setCurrentCompteur(compteur)
-    setForm({ numeroFacture: "", montant: "", selectedCompteur: "tous" })
+    setForm({
+      numeroFacture: "",
+      montant: "",
+      selectedCompteur: "tous",
+      mois: (new Date().getMonth() + 1).toString(),
+      annee: new Date().getFullYear().toString()
+    })
     setShowModal(true)
   }
 
   const handleCloseModal = () => setShowModal(false)
 
   const handleSubmit = async () => {
-    if (!form.numeroFacture && !form.montant) {
-      addToast("Veuillez remplir tous les champs", "warning")
+    if (!form.numeroFacture || !form.montant || !form.mois || !form.annee) {
+      addToast("Veuillez remplir tous les champs obligatoires", "warning")
       return
     }
 
-    // Vérifier si on essaie d'ajouter une facture à un compteur sans sous-compteur
     if (currentCompteur && currentCompteur.sousCompteurs.length === 0) {
       addToast("Impossible d'ajouter une facture : ce compteur n'a pas de sous-compteur", "error")
       return
     }
 
     try {
+      console.log('Début de la création des factures...', form);
+
       if (form.selectedCompteur === "tous") {
         const totalMontant = Number(form.montant)
         const nb = currentCompteur.sousCompteurs.length
         if (nb === 0) return
 
-        // Calcul du montant exact par compteur avec arrondi à 2 décimales
         const montantParCompteur = Number((totalMontant / nb).toFixed(2))
 
-        // Ajuster le dernier pour corriger les centimes perdus
         let sommeAttribuee = 0
         const updates = currentCompteur.sousCompteurs.map((s, index) => {
           let montantFinal = montantParCompteur
           sommeAttribuee += montantFinal
-          // Pour le dernier compteur, ajuster si nécessaire
           if (index === nb - 1) {
             montantFinal = Number((totalMontant - (sommeAttribuee - montantFinal)).toFixed(2))
           }
-          return updateSousCompteur(s.id, {
-            numeroFacture: form.numeroFacture || null,
+
+          const factureData = {
+            sousCompteurId: s.id,
+            numeroFacture: form.numeroFacture,
             montant: montantFinal,
-          })
+            mois: parseInt(form.mois),
+            annee: parseInt(form.annee)
+          };
+
+          console.log('Création facture pour sous-compteur:', factureData);
+          return createFacture(factureData);
         })
 
-        await Promise.all(updates)
+        const results = await Promise.all(updates);
+        console.log('Résultats de la création:', results);
       } else {
-        await updateSousCompteur(form.selectedCompteur, {
-          numeroFacture: form.numeroFacture || null,
-          montant: form.montant ? Number(form.montant) : null,
-        })
+        const factureData = {
+          sousCompteurId: parseInt(form.selectedCompteur),
+          numeroFacture: form.numeroFacture,
+          montant: Number(form.montant),
+          mois: parseInt(form.mois),
+          annee: parseInt(form.annee)
+        };
+
+        console.log('Création facture unique:', factureData);
+        const result = await createFacture(factureData);
+        console.log('Résultat création:', result);
       }
 
-      addToast("Facture ajoutée avec succès", "success")
+      addToast("Facture(s) ajoutée(s) avec succès", "success")
       load()
       handleCloseModal()
     } catch (err) {
-      addToast(err.message, "error")
+      console.error('Erreur détaillée:', err);
+      addToast(`Erreur: ${err.message}`, "error")
     }
   }
 
+  const handleShowDetail = (compteur) => {
+    setCompteurDetail(compteur);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setCompteurDetail(null);
+  };
+
+  const handleDeleteSingleFacture = async (factureId) => {
+    try {
+      await deleteFacture(factureId);
+      addToast("Facture supprimée avec succès", "success");
+      load();
+      // Recharger les détails si le modal est ouvert
+      if (compteurDetail) {
+        const updatedCompteur = compteurs.find(c => c.id === compteurDetail.id);
+        setCompteurDetail(updatedCompteur);
+      }
+    } catch (err) {
+      addToast(err.message, "error");
+    }
+  };
+
   const totalMontant = compteurs.reduce(
-    (acc, c) =>
-      acc +
-      c.sousCompteurs.reduce((sum, s) => sum + (typeof s.montant === "number" ? s.montant : 0), 0),
+    (acc, c) => {
+      const sousCompteurs = c.sousCompteurs || [];
+      return acc + sousCompteurs.reduce((sum, s) => {
+        const factures = s.factures || [];
+        return sum + factures.reduce((factureSum, f) => factureSum + (typeof f.montant === "number" ? f.montant : 0), 0);
+      }, 0);
+    },
     0
-  )
+  );
 
   const handlePayBatch = async () => {
-    const payables = compteurs
-      .flatMap((c) => c.sousCompteurs)
-      .filter((s) => typeof s.montant === "number" && s.montant > 0)
+    // Récupérer toutes les factures non payées de tous les compteurs
+    const facturesAPayer = compteurs.flatMap((c) =>
+      c.sousCompteurs.flatMap((s) =>
+        (s.factures || []).filter((f) => typeof f.montant === "number" && f.montant > 0)
+      )
+    ).flat();
 
-    if (payables.length === 0) {
+    console.log('Factures à payer:', facturesAPayer); // Debug
+
+    if (facturesAPayer.length === 0) {
       addToast("Aucun montant à payer", "warning")
       return
     }
@@ -188,61 +257,62 @@ export default function NonLoues() {
       setShowPayConfirm(false)
     }
   }
-
   // Fonction pour regrouper les paiements par numéro de facture (comme dans le PDF)
   const getGroupedPayments = () => {
     try {
       const allPayments = compteurs.flatMap(c => {
-        // Vérifier que c.sousCompteurs existe et est un tableau
         if (!c.sousCompteurs || !Array.isArray(c.sousCompteurs)) {
           return [];
         }
 
         return c.sousCompteurs
-          .filter(s => s && typeof s.montant === 'number' && s.montant > 0)
-          .map(s => ({
-            ...s,
-            compteur: {
-              province: c.province || 'N/A',
-              quartier: c.quartier || 'N/A',
-              adresse: c.adresse || '-',
-              rg: c.rg || '-'
-            }
-          }));
+          .flatMap(s =>
+            (s.factures || []).map(f => ({
+              ...f,
+              sousCompteur: s,
+              compteur: {
+                nomPropriete: c.nomPropriete || 'N/A',
+                quartier: c.quartier || 'N/A',
+                adresse: c.adresse || '-',
+                rg: c.rg || '-',
+                codeImmeuble: c.codeImmeuble || '-'
+              }
+            }))
+          )
+          .filter(f => f && typeof f.montant === 'number' && f.montant > 0);
       });
 
-      // Si aucun paiement, retourner un tableau vide
       if (allPayments.length === 0) {
         return [];
       }
 
-      // Regrouper par numeroFacture comme dans le PDF
+      // Regrouper par numeroFacture
       const groupedPayments = Object.values(
         allPayments.reduce((acc, p) => {
-          if (!p || !p.id) return acc; // Éviter les éléments undefined ou sans ID
-
           const key = p.numeroFacture || `nofacture-${p.id}`;
           if (!acc[key]) {
             acc[key] = {
               ...p,
-              typeCompteur: [p.typeCompteur || 'eau'],
-              numeroCompteur: [p.numeroCompteur || ''],
+              typeCompteur: [p.sousCompteur?.typeCompteur || 'eau'],
+              numeroCompteur: [p.sousCompteur?.numeroCompteur || ''],
               montant: p.montant || 0,
-              province: p.compteur?.province || 'N/A',
+              nomPropriete: p.compteur?.nomPropriete || 'N/A',
               quartier: p.compteur?.quartier || 'N/A',
               adresse: p.compteur?.adresse || '-',
-              rg: p.compteur?.rg || '-'
+              rg: p.compteur?.rg || '-',
+              codeImmeuble: p.compteur?.codeImmeuble || '-',
+              mois: p.mois,
+              annee: p.annee
             };
           } else {
-            acc[key].typeCompteur.push(p.typeCompteur || 'eau');
-            acc[key].numeroCompteur.push(p.numeroCompteur || '');
+            acc[key].typeCompteur.push(p.sousCompteur?.typeCompteur || 'eau');
+            acc[key].numeroCompteur.push(p.sousCompteur?.numeroCompteur || '');
             acc[key].montant += p.montant || 0;
           }
           return acc;
         }, {})
       );
 
-      // Trier par quartier comme dans le PDF
       return groupedPayments.sort((a, b) => {
         const q1 = a.quartier?.toLowerCase() || '';
         const q2 = b.quartier?.toLowerCase() || '';
@@ -259,7 +329,7 @@ export default function NonLoues() {
       'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
       'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
     ]
-    return nomsMois[mois - 1]
+    return nomsMois[mois - 1] || 'Mois inconnu'
   }
 
   const handleDeleteClick = (sousCompteur) => {
@@ -282,14 +352,14 @@ export default function NonLoues() {
 
       if (!compteurParent) return;
 
-      // Mettre à jour tous les sous-compteurs du compteur pour supprimer facture et montant
-      const updates = compteurParent.sousCompteurs.map((sc) =>
-        updateSousCompteur(sc.id, { numeroFacture: null, montant: null })
+      // Supprimer toutes les factures non payées des sous-compteurs du compteur
+      const deletePromises = compteurParent.sousCompteurs.flatMap(sc =>
+        sc.factures.map(facture => deleteFacture(facture.id))
       );
 
-      await Promise.all(updates);
+      await Promise.all(deletePromises);
 
-      addToast("Toutes les factures et montants de ce compteur ont été supprimés", "success");
+      addToast("Toutes les factures de ce compteur ont été supprimées", "success");
       load();
     } catch (err) {
       addToast(err.message, "error");
@@ -402,11 +472,11 @@ export default function NonLoues() {
                 <table className="recap-table">
                   <thead>
                     <tr>
-                      <th>Province</th>
+                      <th>Propriété</th>
                       <th>Quartier</th>
-                      <th>Adresse</th>
                       <th>RG</th>
                       <th>Type</th>
+                      <th>Mois et année</th>
                       <th>N° Facture</th>
                       <th>Montant (Ar)</th>
                     </tr>
@@ -414,11 +484,11 @@ export default function NonLoues() {
                   <tbody>
                     {getGroupedPayments().map((paiement, index) => (
                       <tr key={index}>
-                        <td>{paiement.province || 'N/A'}</td>
+                        <td>{paiement.nomPropriete || 'N/A'}</td>
                         <td>{paiement.quartier}</td>
-                        <td>{paiement.adresse || '-'}</td>
                         <td>{paiement.rg || '-'}</td>
                         <td>{paiement.typeCompteur.join(' / ')}</td>
+                        <td>{paiement.mois && paiement.annee ? `${getNomMois(paiement.mois)} ${paiement.annee}` : '-'}</td>
                         <td>{paiement.numeroFacture || 'N/A'}</td>
                         <td className="text-end">{formatMontant(paiement.montant)}</td>
                       </tr>
@@ -728,20 +798,14 @@ export default function NonLoues() {
                   </tr>
                 ) : (
                   filteredCompteurs.map((c) => {
-                    // Vérifie si "tous" a été utilisé : tous les sousCompteurs ont le même numeroFacture et montant
-                    // CORRECTION : Vérifier d'abord qu'il y a des sous-compteurs
                     const hasSousCompteurs = c.sousCompteurs && c.sousCompteurs.length > 0;
 
-                    const isTous = hasSousCompteurs && c.sousCompteurs.every(
-                      (sc, index, array) =>
-                        sc.numeroFacture === array[0].numeroFacture
-                    )
-
-                    // Somme totale des montants pour le cas "tous"
-                    const totalMontantTous = hasSousCompteurs ? c.sousCompteurs.reduce(
-                      (sum, sc) => sum + (typeof sc.montant === "number" ? sc.montant : 0),
-                      0
-                    ) : 0;
+                    // Calculer le total des factures pour ce compteur
+                    const totalFacturesCompteur = hasSousCompteurs ?
+                      c.sousCompteurs.reduce((total, sc) => {
+                        const factures = sc.factures || [];
+                        return total + factures.reduce((sum, f) => sum + (f.montant || 0), 0);
+                      }, 0) : 0;
 
                     return (
                       <tr key={c.id}>
@@ -769,15 +833,27 @@ export default function NonLoues() {
 
                         {/* N° Facture */}
                         <td>
-                          <div className="compteurs-list">
+                          <div className="factures-container">
                             {hasSousCompteurs ? (
-                              isTous ? (
-                                <div style={{ textAlign: 'center' }}>{c.sousCompteurs[0]?.numeroFacture || "-"}</div>
-                              ) : (
-                                c.sousCompteurs.map((sc, idx) => (
-                                  <div key={idx} className="compteur-line">{sc.numeroFacture || "-"}</div>
-                                ))
-                              )
+                              c.sousCompteurs.map((sc, scIdx) => {
+                                const factures = sc.factures || [];
+                                return (
+                                  <div key={scIdx} className="sous-compteur-factures">
+                                    {factures.length > 0 ? (
+                                      factures.map((facture, fIdx) => (
+                                        <div key={fIdx} className="facture-item">
+                                          <div className="facture-numero">{facture.numeroFacture || 'N/A'}</div>
+                                          <div className="facture-periode">
+                                            {facture.mois && facture.annee ? `${getNomMois(facture.mois)} ${facture.annee}` : 'Période non spécifiée'}
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="text-muted small">Aucune facture</div>
+                                    )}
+                                  </div>
+                                );
+                              })
                             ) : (
                               <span className="text-muted">-</span>
                             )}
@@ -786,19 +862,30 @@ export default function NonLoues() {
 
                         {/* Montant */}
                         <td>
-                          <div className="compteurs-list">
+                          <div className="montants-container">
                             {hasSousCompteurs ? (
-                              isTous ? (
-                                <div style={{ textAlign: 'center' }}>
-                                  <strong className="text-success" style={{ color: "#0d9488" }}>{formatMontant(totalMontantTous)}</strong>
-                                </div>
-                              ) : (
-                                c.sousCompteurs.map((sc, idx) => (
-                                  <div key={idx} className="compteur-line">
-                                    <strong className="text-success" style={{ color: "#0d9488" }}>{sc.montant != null ? formatMontant(sc.montant) : "-"}</strong>
+                              c.sousCompteurs.map((sc, scIdx) => {
+                                const factures = sc.factures || [];
+                                const totalSousCompteur = factures.reduce((sum, f) => sum + (f.montant || 0), 0);
+
+                                return (
+                                  <div key={scIdx} className="sous-compteur-montants">
+                                    {factures.length > 0 ? (
+                                      <>
+                                        {factures.map((facture, fIdx) => (
+                                          <div key={fIdx} className="montant-item">
+                                            <strong className="text-success" style={{ color: "#0d9488" }}>
+                                              {formatMontant(facture.montant)}
+                                            </strong>
+                                          </div>
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <div className="text-muted small">-</div>
+                                    )}
                                   </div>
-                                ))
-                              )
+                                );
+                              })
                             ) : (
                               <span className="text-muted">-</span>
                             )}
@@ -814,18 +901,43 @@ export default function NonLoues() {
                                 size="sm"
                                 onClick={() => handleShowModal(c)}
                                 style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}
-                                disabled={!hasSousCompteurs} // Désactiver si pas de sous-compteurs
+                                disabled={!hasSousCompteurs}
                               >
                                 <PlusCircleFill size={16} />
                               </Button>
                             </OverlayTrigger>
-                            {hasSousCompteurs && c.sousCompteurs.some((sc) => sc.numeroFacture || sc.montant) && (
-                              <OverlayTrigger placement="top" overlay={<Tooltip>Supprimer toutes les factures</Tooltip>}>
-                                <Button variant="danger" size="sm" onClick={() => handleDeleteClick(c.sousCompteurs[0])}>
-                                  <TrashFill size={16} />
-                                </Button>
-                              </OverlayTrigger>
-                            )}
+
+                            {/* Afficher le bouton supprimer seulement s'il y a des factures */}
+                            {hasSousCompteurs && c.sousCompteurs.some(sc => {
+                              const factures = sc.factures || [];
+                              return factures.length > 0;
+                            }) && (
+                                <OverlayTrigger placement="top" overlay={<Tooltip>Supprimer toutes les factures de ce compteur</Tooltip>}>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleDeleteClick(c.sousCompteurs[0])}
+                                  >
+                                    <TrashFill size={16} />
+                                  </Button>
+                                </OverlayTrigger>
+                              )}
+
+                            {/* Bouton pour voir le détail des factures */}
+                            {hasSousCompteurs && c.sousCompteurs.some(sc => {
+                              const factures = sc.factures || [];
+                              return factures.length > 0;
+                            }) && (
+                                <OverlayTrigger placement="top" overlay={<Tooltip>Voir le détail des factures</Tooltip>}>
+                                  <Button
+                                    variant="info"
+                                    size="sm"
+                                    onClick={() => handleShowDetail(c)}
+                                  >
+                                    <EyeFill size={16} />
+                                  </Button>
+                                </OverlayTrigger>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -859,21 +971,64 @@ export default function NonLoues() {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>N° Facture</Form.Label>
+                <Form.Label>N° Facture *</Form.Label>
                 <Form.Control
                   type="text"
                   value={form.numeroFacture}
                   onChange={(e) => setForm({ ...form, numeroFacture: e.target.value })}
                   placeholder="Entrez le numéro de facture"
+                  required
                 />
               </Form.Group>
+
+              <div className="row">
+                <div className="col">
+                  <Form.Group className="mb-3">
+                    <Form.Label>Mois *</Form.Label>
+                    <Form.Select
+                      value={form.mois}
+                      onChange={(e) => setForm({ ...form, mois: e.target.value })}
+                      required
+                    >
+                      <option value="">Sélectionnez le mois</option>
+                      <option value="1">Janvier</option>
+                      <option value="2">Février</option>
+                      <option value="3">Mars</option>
+                      <option value="4">Avril</option>
+                      <option value="5">Mai</option>
+                      <option value="6">Juin</option>
+                      <option value="7">Juillet</option>
+                      <option value="8">Août</option>
+                      <option value="9">Septembre</option>
+                      <option value="10">Octobre</option>
+                      <option value="11">Novembre</option>
+                      <option value="12">Décembre</option>
+                    </Form.Select>
+                  </Form.Group>
+                </div>
+                <div className="col">
+                  <Form.Group className="mb-3">
+                    <Form.Label>Année *</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={form.annee}
+                      onChange={(e) => setForm({ ...form, annee: e.target.value })}
+                      placeholder="Ex: 2024"
+                      required
+                    />
+                  </Form.Group>
+                </div>
+              </div>
+
               <Form.Group className="mb-3">
-                <Form.Label>Montant (Ar)</Form.Label>
+                <Form.Label>Montant (Ar) *</Form.Label>
                 <Form.Control
                   type="number"
                   value={form.montant}
                   onChange={(e) => setForm({ ...form, montant: e.target.value })}
                   placeholder="Entrez le montant"
+                  required
+                  step="0.01"
                 />
               </Form.Group>
             </Form>
@@ -882,9 +1037,77 @@ export default function NonLoues() {
             <Button variant="outline-secondary" onClick={handleCloseModal}>
               Annuler
             </Button>
-            <Button variant="primary" onClick={handleSubmit}
-              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}
+              disabled={!form.numeroFacture || !form.montant || !form.mois || !form.annee}
+            >
               Valider
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Modal de détail des factures */}
+        <Modal show={showDetailModal} onHide={handleCloseDetailModal} size="lg">
+          <Modal.Header closeButton style={{ background: "linear-gradient(135deg, #22c55e 0%, #0790bdff 100%)" }}>
+            <Modal.Title>Détail des factures - {compteurDetail?.nomPropriete}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {compteurDetail && compteurDetail.sousCompteurs.map((sc, scIdx) => (
+              <div key={scIdx} className="sous-compteur-detail mb-4">
+                <h6 className="fw-bold">
+                  {sc.numeroCompteur} ({sc.typeCompteur})
+                </h6>
+                {sc.factures && sc.factures.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>N° Facture</th>
+                          <th>Période</th>
+                          <th>Montant</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sc.factures.map((facture, fIdx) => (
+                          <tr key={fIdx}>
+                            <td>{facture.numeroFacture}</td>
+                            <td>{getNomMois(facture.mois)} {facture.annee}</td>
+                            <td className="text-success fw-bold">{formatMontant(facture.montant)}</td>
+                            <td>
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={() => handleDeleteSingleFacture(facture.id)}
+                              >
+                                <TrashFill size={12} />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="fw-bold">
+                          <td colSpan="2">Total {sc.numeroCompteur}:</td>
+                          <td className="text-success">
+                            {formatMontant(sc.factures.reduce((sum, f) => sum + f.montant, 0))}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-muted">Aucune facture</p>
+                )}
+              </div>
+            ))}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleCloseDetailModal}>
+              Fermer
             </Button>
           </Modal.Footer>
         </Modal>
@@ -1244,6 +1467,119 @@ export default function NonLoues() {
           color: #6b7280 !important;
           font-style: italic;
           font-size: 12px;
+        }
+
+        .facture-item {
+          margin-bottom: 4px;
+          padding: 4px;
+          border-radius: 4px;
+          background: #f8f9fa;
+        }
+
+        .facture-total {
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px dashed #dee2e6;
+          background: #e8f5e8;
+        }
+
+        .factures-container {
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .sous-compteur-factures {
+          margin-bottom: 8px;
+          padding: 4px;
+          border-radius: 4px;
+          background: #f8f9fa;
+        }
+
+        .facture-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 2px 4px;
+          margin-bottom: 2px;
+          border-radius: 3px;
+          background: white;
+        }
+
+        .facture-numero {
+          font-weight: 600;
+          font-size: 12px;
+        }
+
+        .facture-periode {
+          font-size: 10px;
+          color: #6c757d;
+        }
+
+        .montants-container {
+          max-height: 200px;
+          overflow-y: auto;
+        }
+
+        .sous-compteur-montants {
+          margin-bottom: 8px;
+          padding: 4px;
+          border-radius: 4px;
+          background: #f8f9fa;
+        }
+
+        .montant-item {
+          padding: 2px 4px;
+          margin-bottom: 2px;
+          border-radius: 3px;
+          background: white;
+          text-align: center;
+        }
+
+        .sous-total-compteur {
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px dashed #dee2e6;
+          text-align: center;
+          background: #e8f5e8;
+        }
+
+        .total-compteur {
+          margin-top: 8px;
+          padding: 8px;
+          border-radius: 4px;
+          background: #d1e7dd;
+          text-align: center;
+          border: 1px solid #badbcc;
+        }
+
+        .sous-compteur-detail {
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          padding: 12px;
+          background: #f8f9fa;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 4px;
+          flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .factures-container,
+          .montants-container {
+            max-height: 150px;
+          }
+          
+          .facture-item {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .action-buttons {
+            flex-direction: column;
+          }
         }
 
         @media (max-width: 768px) {

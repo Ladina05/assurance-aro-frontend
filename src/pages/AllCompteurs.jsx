@@ -136,7 +136,6 @@ export default function AllCompteurs() {
   const handleChangeSousCompteur = (index, key, value) => {
     const scs = [...form.sousCompteurs];
 
-    // Empêche l'erreur "Cannot create property on string"
     if (typeof scs[index] !== "object" || scs[index] === null) {
       scs[index] = { numeroCompteur: "", typeCompteur: "eau" };
     }
@@ -164,7 +163,6 @@ export default function AllCompteurs() {
       return;
     }
 
-    // Vérifier que si des sous-compteurs sont ajoutés, ils sont complets
     const hasIncompleteSousCompteurs = form.sousCompteurs.some(
       (sc) => (sc.numeroCompteur && !sc.typeCompteur) || (!sc.numeroCompteur && sc.typeCompteur)
     );
@@ -177,7 +175,6 @@ export default function AllCompteurs() {
     try {
       const payload = {
         ...form,
-        // N'envoyer que les sous-compteurs qui ont un numéro
         sousCompteurs: form.sousCompteurs
           .filter(sc => sc.numeroCompteur && sc.typeCompteur)
           .map((sc) => ({
@@ -243,7 +240,7 @@ export default function AllCompteurs() {
     })
   }
 
-  // Filtrage combiné (recherche globale + filtres individuels)
+  // Filtrage combiné
   const filteredCompteurs = compteurs
     .filter((c) => {
       // Filtre de recherche globale (existant)
@@ -283,18 +280,15 @@ export default function AllCompteurs() {
       return globalSearchMatch && individualFiltersMatch
     })
     .sort((a, b) => {
-      // Tri alphabétique du quartier, insensible à la casse
       return a.quartier.localeCompare(b.quartier, undefined, { sensitivity: 'base' })
     })
 
-  // Vérifier s'il y a des filtres actifs
   const hasActiveFilters = Object.values(filters).some(filter => filter !== "")
 
-  // Fonction pour générer le PDF manuellement (sans autoTable)
   const downloadPDF = () => {
     try {
       const doc = new jsPDF({
-        orientation: 'landscape', // Mode paysage pour plus de largeur
+        orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
       })
@@ -1024,7 +1018,7 @@ export default function AllCompteurs() {
   th:nth-child(7), td:nth-child(7) { width: 150px; } /* Adresse */
   th:nth-child(8), td:nth-child(8) { width: 125px; } /* Localisation */
   th:nth-child(9), td:nth-child(9) { width: 180px; } /* Compteurs - Largeur augmentée */
-  th:nth-child(10), td:nth-child(10) { width: 80px; } /* Loué */
+  th:nth-child(10), td:nth-child(10) { width: 120px; } /* Loué */
   th:nth-child(11), td:nth-child(11) { width: 95px; } /* Actions */
 
   th {

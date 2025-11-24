@@ -71,9 +71,24 @@ export async function createSousCompteur(payload) {
 }
 
 export async function updateSousCompteur(id, payload) {
+  // Cette fonction peut être conservée pour d'autres mises à jour si nécessaire
   return authFetch(`${API_BASE}/souscompteurs/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload)
+  });
+}
+
+// Gestion des factures
+export async function createFacture(payload) {
+  return authFetch(`${API_BASE}/factures`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteFacture(id) {
+  return authFetch(`${API_BASE}/factures/${id}`, {
+    method: 'DELETE'
   });
 }
 

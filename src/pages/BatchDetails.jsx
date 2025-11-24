@@ -54,7 +54,7 @@ export default function BatchDetails() {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
-      .replace(/\u202F/g, " ") // espace normal
+      .replace(/\u202F/g, " ")
   }
 
   const chequeInputRef = useRef(null)
@@ -62,7 +62,6 @@ export default function BatchDetails() {
 
   const formatPeriodePaiement = (batch) => {
     if (!batch.moisPaiement || !batch.anneePaiement) {
-      // Si pas de période spécifique, utiliser la date du batch
       const dateBatch = new Date(batch.date);
       const mois = dateBatch.toLocaleString('fr-FR', { month: 'long' });
       const annee = dateBatch.getFullYear();
@@ -76,6 +75,14 @@ export default function BatchDetails() {
 
     const nomMois = nomsMois[batch.moisPaiement - 1];
     return `${nomMois} ${batch.anneePaiement}`;
+  }
+
+  const getNomMois = (mois) => {
+    const nomsMois = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ]
+    return nomsMois[mois - 1] || 'Mois inconnu'
   }
 
   const fetchBatchDetails = async () => {
@@ -116,12 +123,12 @@ export default function BatchDetails() {
     setShowDownloadConfirm(false)
   }
 
-  // Fonction pour calculer le total général (identique à celle du backend)
+  // Fonction pour calculer le total général
   const calculerTotalGeneral = () => {
     return groupedPayments.reduce((sum, p) => sum + (p.montant || 0), 0)
   }
 
-  // Fonction pour formater le montant (identique à celle du backend)
+  // Fonction pour formater le montant
   const formatMontantTableau = (montant) => {
     if (montant == null) return "-"
     return montant.toLocaleString('fr-FR', {
@@ -131,7 +138,7 @@ export default function BatchDetails() {
     }).replace(/\u202F/g, ' ')
   }
 
-  // Fonction pour regrouper par quartier (identique à la logique du PDF)
+  // Fonction pour regrouper par quartier
   const getPaymentsGroupesParQuartier = () => {
     const paiementsTries = [...groupedPayments].sort((a, b) => {
       const q1 = a.compteur?.quartier?.toLowerCase() || ''
@@ -150,15 +157,6 @@ export default function BatchDetails() {
 
     return groupes
   }
-
-  const tableauEstTropLong = () => {
-    const groupes = getPaymentsGroupesParQuartier();
-    const totalLignes = Object.values(groupes).reduce(
-      (total, payments) => total + payments.length + 1, // +1 pour la ligne de sous-total
-      1 // +1 pour la ligne de total général
-    );
-    return totalLignes > 15; // Si plus de 15 lignes, considérer comme long
-  };
 
   const handleUploadCheque = async (e) => {
     const file = e.target.files[0]
@@ -300,7 +298,6 @@ export default function BatchDetails() {
     }
   }
 
-  // N'oubliez pas de révoquer les URLs quand on ferme les modals
   const handleCloseChequePreview = () => {
     if (chequePdfUrl) {
       window.URL.revokeObjectURL(chequePdfUrl)
@@ -359,6 +356,36 @@ export default function BatchDetails() {
       return acc
     }, {}),
   )
+
+  // Fonction pour regrouper par propriété (remplace l'ancienne fonction par quartier)
+  const getPaymentsGroupesParPropriete = () => {
+    const paiementsTries = [...groupedPayments].sort((a, b) => {
+      const prop1 = a.compteur?.nomPropriete?.toLowerCase() || ''
+      const prop2 = b.compteur?.nomPropriete?.toLowerCase() || ''
+      return prop1.localeCompare(prop2)
+    })
+
+    const groupes = {}
+    paiementsTries.forEach(p => {
+      const propriete = p.compteur?.nomPropriete || 'Non défini'
+      if (!groupes[propriete]) {
+        groupes[propriete] = []
+      }
+      groupes[propriete].push(p)
+    })
+
+    return groupes
+  }
+
+  // Fonction pour vérifier si le tableau est trop long (adaptée pour les propriétés)
+  const tableauEstTropLong = () => {
+    const groupes = getPaymentsGroupesParPropriete();
+    const totalLignes = Object.values(groupes).reduce(
+      (total, payments) => total + payments.length + 1,
+      1
+    );
+    return totalLignes > 15;
+  };
 
   // Filtrage combiné (recherche globale + filtres individuels)
   const filteredPayments = groupedPayments
@@ -677,7 +704,7 @@ export default function BatchDetails() {
                 <div className="preview-info">
                   <span>Total général: <strong>{formatMontantTableau(calculerTotalGeneral())} Ar</strong></span>
                   <span>Nombre de paiements: <strong>{groupedPayments.length}</strong></span>
-                  <span>Nombre de quartiers: <strong>{Object.keys(getPaymentsGroupesParQuartier()).length}</strong></span>
+                  <span>Nombre de propriétés: <strong>{Object.keys(getPaymentsGroupesParPropriete()).length}</strong></span>
                 </div>
               </div>
 
@@ -685,32 +712,32 @@ export default function BatchDetails() {
                 <table className="preview-table">
                   <thead>
                     <tr>
-                      <th>Province</th>
-                      <th>Quartier</th>
-                      <th>Adresse</th>
+                      <th>Propriété</th>
+                      <th>Localisation</th>
                       <th>RG</th>
-                      <th>Type Compteur</th>
-                      <th>N° Facture</th>
+                      <th>Type</th>
+                      <th>Mois et année</th>
+                      <th>N°Facture</th>
                       <th>Montant (Ar)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(getPaymentsGroupesParQuartier()).map(([quartier, payments]) => (
+                    {Object.entries(getPaymentsGroupesParPropriete()).map(([propriete, payments]) => (
                       <>
                         {payments.map((p, index) => (
-                          <tr key={`${quartier}-${index}`}>
-                            <td>{p.compteur?.province || 'N/A'}</td>
+                          <tr key={`${propriete}-${index}`}>
                             <td>
-                              <strong>{quartier}</strong>
+                              <strong>{propriete}</strong>
                             </td>
-                            <td className="address-cell">
-                              {p.compteur?.adresse || '-'}
-                            </td>
+                            <td>{p.compteur?.localisation || '-'}</td>
                             <td>{p.compteur?.rg || '-'}</td>
                             <td>
                               <span className="type-badge">
                                 {p.typeCompteur.join(' / ')}
                               </span>
+                            </td>
+                            <td>
+                              {p.mois && p.annee ? `${getNomMois(p.mois)} ${p.annee}` : '-'}
                             </td>
                             <td>
                               <code>{p.numeroFacture || 'N/A'}</code>
@@ -720,10 +747,10 @@ export default function BatchDetails() {
                             </td>
                           </tr>
                         ))}
-                        {/* Sous-total par quartier */}
+                        {/* Sous-total par propriété */}
                         <tr className="subtotal-row">
                           <td colSpan="6" className="text-end">
-                            <strong>Sous-total {quartier}:</strong>
+                            <strong>Sous-total {propriete}:</strong>
                           </td>
                           <td className="text-end">
                             <strong className="subtotal-amount">
@@ -752,7 +779,7 @@ export default function BatchDetails() {
                 {/* Message d'information pour les tables longues */}
                 {tableauEstTropLong() && (
                   <div className="table-info">
-                    🔍 Tableau avec défilement - {Object.keys(getPaymentsGroupesParQuartier()).length} quartiers • {groupedPayments.length} paiements
+                    🔍 Tableau avec défilement - {Object.keys(getPaymentsGroupesParPropriete()).length} propriétés • {groupedPayments.length} paiements
                   </div>
                 )}
               </div>
@@ -770,7 +797,6 @@ export default function BatchDetails() {
           </div>
         </div>
       )}
-
       <div className="page-container">
         <div className="details-header animate-fadeInDown">
           <Link to="/historique" className="btn btn-outline-secondary mb-3">
@@ -1125,6 +1151,7 @@ export default function BatchDetails() {
                   <th>Type Compteur</th>
                   <th>N°Compteur</th>
                   <th>N° Facture</th>
+                  <th>Période</th>
                   <th>Montant (Ar)</th>
                 </tr>
               </thead>
@@ -1171,6 +1198,9 @@ export default function BatchDetails() {
                         </span>
                       </td>
                       <td>{p.numeroFacture ?? "-"}</td>
+                      <td>
+                        {p.mois && p.annee ? `${getNomMois(p.mois)} ${p.annee}` : '-'}
+                      </td>
                       <td>
                         <strong className="text-success">{formatMontantFR(p.montant)}</strong>
                       </td>
