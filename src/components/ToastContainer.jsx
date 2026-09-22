@@ -3,8 +3,6 @@
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
 import Toast from "./Toast"
-import "./Toast.css"
-
 export default function ToastContainer({ toasts, removeToast }) {
   const [mounted, setMounted] = useState(false)
 

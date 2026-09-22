@@ -2,8 +2,6 @@
 
 import { useEffect } from "react"
 import { CheckCircleFill, XCircleFill, InfoCircleFill, ExclamationTriangleFill, X } from "react-bootstrap-icons"
-import "./Toast.css"
-
 export default function Toast({ message, type = "success", onClose, duration = 3000 }) {
   useEffect(() => {
     const timer = setTimeout(() => {

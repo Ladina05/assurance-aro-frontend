@@ -6,9 +6,6 @@ import { EnvelopeFill, ArrowLeft, CheckCircleFill } from "react-bootstrap-icons"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import { forgotPassword } from "../services/api"
-import "./Auth.css"
-import "../styles/animations.css"
-
 export default function ForgotPassword() {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)

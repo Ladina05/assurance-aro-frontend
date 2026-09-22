@@ -1,8 +1,6 @@
 "use client"
 import { Modal, Button } from "react-bootstrap"
 import { ExclamationTriangleFill } from "react-bootstrap-icons"
-import "./ConfirmDialog.css"
-
 export default function ConfirmDialog({
   show,
   onHide,

@@ -4,8 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext'; // ✅ Import du provider
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './index.css';
-
 // Sélection de la racine de l'application
 const rootElement = document.getElementById('root');
 

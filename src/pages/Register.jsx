@@ -13,9 +13,6 @@ import {
 } from "react-bootstrap-icons"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
-import "./Auth.css"
-import "../styles/animations.css"
-
 export default function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({

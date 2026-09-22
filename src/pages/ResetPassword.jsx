@@ -6,9 +6,6 @@ import { LockFill, CheckCircleFill, XCircleFill, ArrowLeft } from "react-bootstr
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import { verifyResetToken, resetPassword } from "../services/api"
-import "./Auth.css"
-import "../styles/animations.css"
-
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()

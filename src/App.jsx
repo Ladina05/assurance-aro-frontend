@@ -1,6 +1,6 @@
 "use client"
 
-import { useContext, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom"
 import { AuthContext } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
@@ -28,6 +28,28 @@ export default function App() {
   const location = useLocation()
   const [showProfilePictureModal, setShowProfilePictureModal] = useState(false)
   const { toasts, addToast, removeToast } = useToast()
+
+  const activePage = location.pathname.startsWith("/historique/")
+    ? "batch-details"
+    : location.pathname === "/all-compteurs"
+      ? "all-compteurs"
+      : location.pathname === "/loues"
+        ? "loues"
+        : location.pathname === "/non-loues"
+          ? "non-loues"
+          : location.pathname === "/historique"
+            ? "historique"
+            : location.pathname === "/evolution"
+              ? "evolution"
+              : "default"
+
+  useEffect(() => {
+    document.body.dataset.activePage = activePage
+
+    return () => {
+      delete document.body.dataset.activePage
+    }
+  }, [activePage])
 
   const handleProfilePictureUpdate = async (profilePicture) => {
     try {

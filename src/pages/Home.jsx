@@ -5,8 +5,6 @@ import { getStatistiquesGeneral } from "../services/api"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
 import { Button } from "react-bootstrap"
-import "./Home.css"
-
 export default function Home() {
   const [statistiques, setStatistiques] = useState(null)
   const [loading, setLoading] = useState(true)

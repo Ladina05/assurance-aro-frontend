@@ -6,9 +6,6 @@ import { AuthContext } from "../context/AuthContext"
 import { EnvelopeFill, LockFill, BoxArrowInRight, PersonPlusFill, Eye, EyeSlash } from "react-bootstrap-icons"
 import { useToast } from "../hooks/useToast"
 import ToastContainer from "../components/ToastContainer"
-import "./Auth.css"
-import "../styles/animations.css"
-
 export default function Login() {
   const { login } = useContext(AuthContext)
   const [email, setEmail] = useState("")
